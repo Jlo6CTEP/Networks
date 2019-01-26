@@ -1,10 +1,13 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <malloc.h>
 
-#define SIZE 128
 
-int array_stack[SIZE];
+#define SIZE 10
 
+int* array_stack;
 int pointer = 0;
+int size = SIZE;
 
 
 
@@ -13,10 +16,10 @@ int peek() {
 }
 
 void push(int data) {
-	if(pointer > SIZE) 
-		printf("Error stack is full");
-	else
-		array_stack[pointer++] = data;
+	if(pointer >= size) 
+		array_stack = (int*)realloc(array_stack, size * sizeof(int) * 2);
+	size*=2;
+	array_stack[pointer++] = data;
 }
 
 void pop() {
@@ -34,6 +37,7 @@ void display() {
 }
 
 void create() {
+	array_stack = (int*)malloc(SIZE);
 	pointer = 0;
 }
 
@@ -49,6 +53,10 @@ int main() {
 	push(3);
 	display();
 	push(4);
+	push(5);
+	push(6);
+	push(7);
+
 	display();
 	pop();
 	pop();
@@ -56,4 +64,6 @@ int main() {
 	pop();
 	pop();
 	display();
+	free(array_stack);
+	return 0;
 }
