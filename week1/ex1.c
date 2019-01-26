@@ -4,8 +4,8 @@
 #include <malloc.h>
 #include <string.h>
 
-PHANDLE read_end;
-PHANDLE write_end;
+HANDLE read_end;
+HANDLE write_end;
 
 
 
@@ -56,41 +56,61 @@ DWORD WINAPI server(void* data) {
 	
 }
 
-DWORD WINAPI client() {
-	
-}
 /*
-	int peek()  - return the upper element in stack (without poping it) 
-	void push(int data) - push new element into the stack 
-	void pop() - pop upper element from the stack int 
-	int empty() - check if the stack is empty 
-	void display() - print the stack 
-	void create() - create a new empty stack 
-	void stack_size() - print stack size
+	code 0: int peek()  - return the upper element in stack (without poping it) 
+	code 1:void push(int data) - push new element into the stack 
+	code 2:	void pop() - pop upper element from the stack int 
+	code 3:int empty() - check if the stack is empty 
+	code 4:	void display() - print the stack 
+	code 5:void create() - create a new empty stack 
+	code 6:void stack_size() - print stack size
 */
 
-int parse_stuff(char* command) {
+int* parse_stuff(char* command, int return_array[]) {
+	return_array[1] = 0;
 	if (strcmp(command, "peek()") == 0)
-		return peek();
-	if (strcmp(command, "pop()") == 0)
-		pop();
-	if (strcmp(command, "empty()") == 0)
-		return empty();
-	if (strcmp(command, "display()") == 0)
-		display();
-	if (strcmp(command, "create()") == 0)
-		create();
-	if (strcmp(command, "stack_size()") == 0)
-		stack_size();
-			
+		return_array[0] = 0;
+	else if (strcmp(command, "pop()") == 0)
+		return_array[0] = 2;
+	else if (strcmp(command, "empty()") == 0)
+		return_array[0] = 3;
+	else if (strcmp(command, "display()") == 0)
+		return_array[0] = 4;
+	else if (strcmp(command, "create()") == 0)
+		return_array[0] = 5;
+	else if (strcmp(command, "stack_size()") == 0) 
+		return_array[0] = 6;
+	else if (strstr(command, "push(") != NULL && strchr(command, ')') != 0) {
+		int in_len =(strchr(command, ')') - command - 5);
+		char* input = malloc(in_len + 1);
+		input[in_len] = '\0';
+		memcpy((void*) input, (void*)(command + 5), in_len);
+		return_array[0] = 6;
+		return_array[1] = atoi(input);
+	} else
+		return_array[0] = -1;			
+	return return_array;
 }
 
-int main() {
-	if(!CreatePipe(read_end, write_end, NULL, 0))
+int main() { //also this guy are gonna be a client
+	if(!CreatePipe(&read_end, &write_end, NULL, 0))
 		printf("Shit happens\n");
+
+	int next = 1;
+
+	while(next != -1) {
+		char command[64];
+		scanf("%s", command);
+		int parsed_command[2];
+		parse_stuff(command, parsed_command);
+		printf("%d %d \n", parsed_command[0], parsed_command[1]);
+		next = parsed_command[0];
+	}
+
+	
 		
-	HANDLE thread_server = CreateThread(NULL, 0, server, (void*) NULL, 0, NULL);
-	HANDLE thread_client = CreateThread(NULL, 0, client, (void*) NULL, 0, NULL);
-		
+			
+	/*HANDLE thread_server = CreateThread(NULL, 0, server, (void*) NULL, 0, NULL);
+	*/	
 	return 0;
 }
