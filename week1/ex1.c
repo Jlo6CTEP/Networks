@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <malloc.h>
 #include <string.h>
+#include <sys/time.h>
 
 HANDLE read_end;
 HANDLE write_end;
@@ -18,7 +19,7 @@ int size = SIZE;
 
 
 int peek() {
-	return(array_stack[pointer]);
+	return(array_stack[pointer-1]);
 }
 
 void push(int data) {
@@ -48,12 +49,38 @@ void create() {
 }
 
 void stack_size() {
-	printf("%d", pointer);
+	printf("%d\n", pointer);
 }
 
 
-DWORD WINAPI server(void* data) {
-	
+DWORD WINAPI server() {
+	int parsed_command[2];
+	while(1) {
+		long unsigned int bytes_written;
+		ReadFile(read_end, parsed_command, 2*sizeof(int), &bytes_written, NULL);
+		switch(parsed_command[0]) {
+			case 0:
+				printf("%d\n", peek());
+				break;
+			case 2:
+				pop();
+				break;
+			case 3:
+				printf("%d\n", empty());
+				break;
+			case 4:
+				display();
+				break;
+			case 5:
+				create();
+				break;
+			case 6:
+				stack_size();
+				break;
+			case 1:
+				push(parsed_command[1]);
+		}	
+	}
 }
 
 /*
@@ -85,7 +112,7 @@ int* parse_stuff(char* command, int return_array[]) {
 		char* input = malloc(in_len + 1);
 		input[in_len] = '\0';
 		memcpy((void*) input, (void*)(command + 5), in_len);
-		return_array[0] = 6;
+		return_array[0] = 1;
 		return_array[1] = atoi(input);
 	} else
 		return_array[0] = -1;			
@@ -93,6 +120,7 @@ int* parse_stuff(char* command, int return_array[]) {
 }
 
 int main() { //also this guy are gonna be a client
+	HANDLE thread_server = CreateThread(NULL, 0, server, (void*) NULL, 0, NULL);
 	if(!CreatePipe(&read_end, &write_end, NULL, 0))
 		printf("Shit happens\n");
 
@@ -103,14 +131,11 @@ int main() { //also this guy are gonna be a client
 		scanf("%s", command);
 		int parsed_command[2];
 		parse_stuff(command, parsed_command);
-		printf("%d %d \n", parsed_command[0], parsed_command[1]);
 		next = parsed_command[0];
+		long unsigned int bytes_written;
+		WriteFile(write_end, parsed_command, 2*sizeof(int),&bytes_written, NULL);
 	}
-
-	
-		
-			
-	/*HANDLE thread_server = CreateThread(NULL, 0, server, (void*) NULL, 0, NULL);
-	*/	
+	free(array_stack);			
+	CloseHandle(thread_server);
 	return 0;
 }
