@@ -1,4 +1,4 @@
-./idea/*
+idea/*
 cmake-build-debug/CMakeCache.txt
 cmake-build-debug/CMakeFiles/*
 cmake-build-debug/Makefile
