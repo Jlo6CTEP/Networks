@@ -1,3 +1,12 @@
+/*
+ * ----------------------------------------------------------------------------
+ * "THE BEER-WARE LICENSE" (Revision 42):
+ * <JlobCTEP> wrote this file.  As long as you retain this notice you
+ * can do whatever you want with this stuff. If we meet some day, and you think
+ * this stuff is worth it, you can buy me a beer in return. Yuriy Sukhorukov
+ * ----------------------------------------------------------------------------
+ */
+
 #include "array_list/alist.h"
 #include <pthread.h>
 #include <netdb.h>
