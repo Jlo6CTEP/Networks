@@ -333,7 +333,8 @@ void* udp_client(void *nothing) {
             nn->node_address.sin_port = UDP_SERVER_PORT;
             iter = array_list_next(node_list, iter, &is_error);
             pthread_mutex_unlock(&lock);
-            printf("pingin node with name %s\n", nn->name);
+            printf("Pingin %s:%u now\n",
+                   inet_ntoa(nn->node_address.sin_addr), ntohs(nn->node_address.sin_port));
             sendto(sockfd, (const char *)PING, CMD_LEN, 0, (const struct sockaddr *) &nn->node_address,
                     sizeof(nn->node_address));
             ssize_t n = recvfrom(sockfd, (char *)buffer, CMD_LEN, 0, (struct sockaddr *) &nn->node_address,
