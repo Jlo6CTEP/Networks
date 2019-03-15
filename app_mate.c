@@ -230,15 +230,12 @@ void * tcp_client(void * data) {
 
             pthread_mutex_lock(&lock);
             node_list = array_list_deserialise(node_buffer);
-            pthread_mutex_unlock(&lock);
-
-            pthread_mutex_lock(&lock);
 
             sendto(main_socket, (char *) DISCONNECT, CMD_LEN, 0,
                    (struct sockaddr *) &dest, sizeof(struct sockaddr));
             close(main_socket);
 
-            printf("Client got list and now ready to tell everybody that he arrived\n");
+            printf("Got list and now ready to tell everybody that im arrived\n");
 
             int is_shtf  =0;
 
@@ -269,6 +266,7 @@ void * tcp_client(void * data) {
                        (struct sockaddr *) &dest, sizeof(struct sockaddr));
                 close(main_socket);
             }
+            pthread_mutex_unlock(&lock);
         }
         case CREATE_NEW_ID:
             return NULL;
@@ -325,10 +323,12 @@ void* udp_client(void *nothing) {
     while(1){
         size_t iter = array_list_iter(node_list, &is_error);
         while(is_error >= 0) {
+            printf("%d\n", (int) is_error);
             pthread_mutex_lock(&lock);
             network_node *nn = array_list_get(node_list, iter, &is_error);
             nn->node_address.sin_port = htons(UDP_SERVER_PORT);
             iter = array_list_next(node_list, iter, &is_error);
+            printf("%d\n", (int) is_error);
             pthread_mutex_unlock(&lock);
             printf("Pingin %s:%u now\n",
                    inet_ntoa(nn->node_address.sin_addr), ntohs(nn->node_address.sin_port));
