@@ -71,8 +71,7 @@ int get_command(char * parameter, void ** line, int line_size, size_t * index) {
 
 
 void *tcp_server(void * nothing) {
-    printf("server debug 1\n");
-
+    self = (network_node){0};
     int main_socket = 0;
 
     int comm_socket = 0;
@@ -120,6 +119,9 @@ void *tcp_server(void * nothing) {
                     void *serialized = array_list_serialize(node_list, &serialized_len);
                     printf("List provided for %s:%u\n",
                            inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
+                    printf("My name is %s\n", self.name);
+                    printf("My port is %d\n", self.node_address.sin_port);
+                    printf("Length of list is %zu\n", serialized_len + sizeof(network_node));
                     sendto(comm_socket, &serialized_len, sizeof(size_t), 0, (const struct sockaddr *) &client_addr,
                            addr_len);
                     sendto(comm_socket, serialized, serialized_len, 0, (const struct sockaddr *) &client_addr,
@@ -196,6 +198,8 @@ void * tcp_client(void * data) {
             size_t len = 0;
             recvfrom(main_socket, &len, sizeof(size_t), 0, (struct sockaddr *) &dest, &addr_len);
 
+            printf("Accepting list with length %zu\n", len + sizeof(network_node));
+
             void * node_buffer = malloc(len + sizeof(network_node));
 
             recvfrom(main_socket, node_buffer, len + sizeof(network_node), 0,
@@ -213,8 +217,17 @@ void * tcp_client(void * data) {
 
             printf("Client got list and now ready to tell everybody that he arrived\n");
 
-            int is_shtf;
+            int is_shtf  =0;
+
             size_t iter = array_list_iter(node_list, &is_shtf);
+            while(is_shtf >= 0) {
+                printf("%s ", array_list_get(node_list, iter, &is_shtf)->name);
+                iter = array_list_next(node_list, iter, &is_shtf);
+            }
+            printf("\n");
+
+            is_shtf = 0;
+            iter = array_list_iter(node_list, &is_shtf);
 
             while (is_shtf>= 0) {
                 network_node *node = array_list_get(node_list, iter, &is_shtf);

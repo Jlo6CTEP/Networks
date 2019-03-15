@@ -1,7 +1,22 @@
 
 #include <stdio.h>
-#include "alist.h"
-#include "sockutil.h"
+#include "array_list/alist.h"
+#include <netdb.h>
+#include <memory.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <ffi.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/ip.h>
+#include <string.h>
+#include <arpa/inet.h>
+#include <fcntl.h>
+#include <errno.h>
+
 
 int main() {
 
