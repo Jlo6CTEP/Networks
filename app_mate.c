@@ -134,9 +134,6 @@ void *tcp_server(void * nothing) {
 
                     printf("List provided for %s:%u\n",
                            inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
-                    printf("My name is %s\n", self.name);
-                    printf("My port is %d\n", self.node_address.sin_port);
-                    printf("Length of list is %zu\n", serialized_len + sizeof(network_node));
                     sendto(comm_socket, &serialized_len, sizeof(size_t), 0, (const struct sockaddr *) &client_addr,
                            addr_len);
                     sendto(comm_socket, serialized, serialized_len, 0, (const struct sockaddr *) &client_addr,
