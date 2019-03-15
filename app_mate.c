@@ -112,14 +112,15 @@ void *tcp_server(void * nothing) {
                 char command[CMD_LEN];
                 recvfrom(comm_socket, command, CMD_LEN, 0, (struct sockaddr *) &client_addr, &addr_len);
                 if (memcmp(command, (char *)ADD_NEW, CMD_LEN) == 0) {
-                    network_node *node = {0};
-                    recvfrom(comm_socket, (void *)node, sizeof(network_node), 0,
+                    network_node node;
+                    memset(&node, 0 , sizeof(network_node));
+                    recvfrom(comm_socket, (void *)&node, sizeof(network_node), 0,
                             (struct sockaddr *) &client_addr, &addr_len);
                     printf("New node %s:%u was added to list\n",
-                            inet_ntoa(node->node_address.sin_addr),
-                            ntohs(node->node_address.sin_port));
+                            inet_ntoa(node.node_address.sin_addr),
+                            ntohs(node.node_address.sin_port));
                     pthread_mutex_lock(&lock);
-                    array_list_add(node_list, node);
+                    array_list_add(node_list, &node);
                     pthread_mutex_unlock(&lock);
                 } else if (memcmp(command, (char *)GET_LIST, CMD_LEN) == 0) {
                     size_t serialized_len;
