@@ -74,8 +74,7 @@ int get_command(char * parameter, void ** line, int line_size, size_t * index) {
 
 void *tcp_server(void * nothing) {
     pthread_mutex_lock(&init);
-    
-    self = (network_node){0};
+
     int main_socket = 0;
 
     int comm_socket = 0;
@@ -120,7 +119,14 @@ void *tcp_server(void * nothing) {
                     pthread_mutex_unlock(&lock);
                 } else if (memcmp(command, (char *)GET_LIST, CMD_LEN) == 0) {
                     size_t serialized_len;
+
+                    array_list_add(node_list, &self);
                     void *serialized = array_list_serialize(node_list, &serialized_len);
+                    int is_shtf = 0;
+                    array_list_remove(node_list, &self, &is_shtf);
+
+                    array_list * pl = array_list_deserialise(serialized);
+
                     printf("List provided for %s:%u\n",
                            inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
                     printf("My name is %s\n", self.name);
@@ -129,8 +135,6 @@ void *tcp_server(void * nothing) {
                     sendto(comm_socket, &serialized_len, sizeof(size_t), 0, (const struct sockaddr *) &client_addr,
                            addr_len);
                     sendto(comm_socket, serialized, serialized_len, 0, (const struct sockaddr *) &client_addr,
-                           addr_len);
-                    sendto(comm_socket, &self, sizeof(network_node), 0, (const struct sockaddr *) &client_addr,
                            addr_len);
                 } else if ((memcmp(command, (char *)DISCONNECT, CMD_LEN) == 0)) {
                     close(comm_socket);
@@ -160,6 +164,7 @@ void * tcp_client(void * data) {
         memcpy(&self.name, buffer[index1 + 1], NAME_LENGTH);
         self.no_response_counter = 0;
         self.node_address.sin_family = AF_INET;
+        self.node_address.sin_addr.s_addr = INADDR_ANY;
         self.node_address.sin_port  = htons(DEFAULT_PORT);
 
         pthread_mutex_unlock(&init);
@@ -208,7 +213,7 @@ void * tcp_client(void * data) {
 
             void * node_buffer = malloc(len + sizeof(network_node));
 
-            recvfrom(main_socket, node_buffer, len + sizeof(network_node), 0,
+            recvfrom(main_socket, node_buffer, len, 0,
                     (struct sockaddr *) &dest, &addr_len);
 
             pthread_mutex_lock(&lock);
