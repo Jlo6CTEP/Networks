@@ -19,10 +19,3 @@ add_executable(Networks
 #        alist.c
 #        alist.h
 #        test.c)
-
-cmake-build-debug/CMakeCache.txt
-cmake-build-debug/CMakeFiles/3.10.2/CMakeCCompiler.cmake
-cmake-build-debug/Makefile
-cmake-build-debug/Networks
-cmake-build-debug/Networks.cbp
-cmake-build-debug/cmake_install.cmake

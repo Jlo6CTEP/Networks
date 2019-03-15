@@ -138,7 +138,7 @@
     </option>
   </component>
   <component name="RunManager">
-    <configuration name="Networks" type="CMakeRunConfiguration" factoryName="Application" PROGRAM_PARAMS="-c -a 127.0.0.1 -p 8080 -n Charlie" PASS_PARENT_ENVS_2="true" PROJECT_NAME="Networks" TARGET_NAME="Networks" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="Networks" RUN_TARGET_NAME="Networks">
+    <configuration name="Networks" type="CMakeRunConfiguration" factoryName="Application" PASS_PARENT_ENVS_2="true" PROJECT_NAME="Networks" TARGET_NAME="Networks" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="Networks" RUN_TARGET_NAME="Networks">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
