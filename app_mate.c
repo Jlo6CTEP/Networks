@@ -56,6 +56,8 @@
 
 pthread_mutex_t lock;
 
+pthread_mutex_t init;
+
 p_array_list node_list;
 network_node self;
 
@@ -71,6 +73,8 @@ int get_command(char * parameter, void ** line, int line_size, size_t * index) {
 
 
 void *tcp_server(void * nothing) {
+    pthread_mutex_lock(&init);
+    
     self = (network_node){0};
     int main_socket = 0;
 
@@ -154,12 +158,14 @@ void * tcp_client(void * data) {
     int command_counter;
     if (get_command(NAME, buffer, cmd_len, &index1) != -1 && index1 + 1 <= cmd_len) {
         memcpy(&self.name, buffer[index1 + 1], NAME_LENGTH);
+        self.no_response_counter = 0;
+        self.node_address.sin_family = AF_INET;
+        self.node_address.sin_port  = htons(DEFAULT_PORT);
+
+        pthread_mutex_unlock(&init);
         //handle make command
         if (get_command(CREATE_NEW, buffer, cmd_len, &index1) != -1) {
             command_counter = CREATE_NEW_ID;
-            self.no_response_counter = 0;
-            self.node_address.sin_family = AF_INET;
-            self.node_address.sin_port  = htons(DEFAULT_PORT);
         //handle connect command
         } else if (get_command(CONNECT, buffer, cmd_len, &index1) != -1) {
             char address[20];
@@ -329,6 +335,8 @@ void* udp_client(void *nothing) {
 
 int main(int argc, char **argv) {
     pthread_mutex_init(&lock, NULL);
+    pthread_mutex_init(&init, NULL);
+    pthread_mutex_lock(&init);
     node_list = create_array_list(2);
 
     void * data = malloc(sizeof(int) + sizeof(void *) * argc);

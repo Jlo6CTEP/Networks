@@ -13,10 +13,7 @@
   <component name="ChangeListManager">
     <list default="true" id="914cfde8-ecfa-4a53-8f28-23713e9aa922" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/CMakeLists.txt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app_mate.c" beforeDir="false" afterPath="$PROJECT_DIR$/app_mate.c" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/array_list/test.c" beforeDir="false" afterPath="$PROJECT_DIR$/array_list/test.c" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/Networks" beforeDir="false" afterPath="$PROJECT_DIR$/cmake-build-debug/Networks" afterDir="false" />
     </list>
     <ignored path="$PROJECT_DIR$/cmake-build-debug/" />
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
@@ -40,8 +37,8 @@
       <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/app_mate.c">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="4624">
-              <caret line="341" column="47" lean-forward="true" selection-start-line="341" selection-start-column="47" selection-end-line="341" selection-end-column="47" />
+            <state relative-caret-position="373">
+              <caret line="76" column="4" selection-start-line="76" selection-start-column="4" selection-end-line="76" selection-end-column="4" />
               <folding>
                 <element signature="e#437#466#0" expanded="true" />
               </folding>
@@ -134,7 +131,7 @@
     </option>
   </component>
   <component name="RunManager">
-    <configuration name="Networks" type="CMakeRunConfiguration" factoryName="Application" PROGRAM_PARAMS="./Networks -c -a 10.244.1.214 -p 2000 -n Alpha" PASS_PARENT_ENVS_2="true" PROJECT_NAME="Networks" TARGET_NAME="Networks" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="Networks" RUN_TARGET_NAME="Networks">
+    <configuration name="Networks" type="CMakeRunConfiguration" factoryName="Application" PROGRAM_PARAMS="./Networks -mk -n Charlie" PASS_PARENT_ENVS_2="true" PROJECT_NAME="Networks" TARGET_NAME="Networks" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="Networks" RUN_TARGET_NAME="Networks">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
@@ -152,23 +149,24 @@
       <updated>1552652859770</updated>
       <workItem from="1552652862127" duration="2652000" />
       <workItem from="1552655750243" duration="819000" />
-      <workItem from="1552661062807" duration="4659000" />
+      <workItem from="1552661062807" duration="5923000" />
     </task>
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="8371000" />
+    <option name="totallyTimeSpent" value="9635000" />
   </component>
   <component name="ToolWindowManager">
     <frame x="-8" y="-8" width="1936" height="1056" extended-state="6" />
+    <editor active="true" />
     <layout>
       <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.25266525" />
       <window_info id="Structure" order="1" side_tool="true" weight="0.25" />
       <window_info id="Favorites" order="2" side_tool="true" />
       <window_info anchor="bottom" id="Message" order="0" />
       <window_info anchor="bottom" id="Find" order="1" />
-      <window_info active="true" anchor="bottom" id="Run" order="2" visible="true" weight="0.32936078" />
-      <window_info anchor="bottom" id="Debug" order="3" weight="0.34127843" />
+      <window_info anchor="bottom" id="Run" order="2" weight="0.32936078" />
+      <window_info active="true" anchor="bottom" id="Debug" order="3" visible="true" weight="0.34127843" />
       <window_info anchor="bottom" id="Cvs" order="4" weight="0.25" />
       <window_info anchor="bottom" id="Inspection" order="5" weight="0.4" />
       <window_info anchor="bottom" id="TODO" order="6" />
@@ -193,19 +191,29 @@
       <breakpoints>
         <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
           <url>file://$PROJECT_DIR$/app_mate.c</url>
-          <line>121</line>
+          <line>123</line>
           <option name="timeStamp" value="24" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
           <url>file://$PROJECT_DIR$/app_mate.c</url>
-          <line>123</line>
+          <line>125</line>
           <option name="timeStamp" value="25" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
+          <url>file://$PROJECT_DIR$/app_mate.c</url>
+          <line>87</line>
+          <option name="timeStamp" value="30" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
   </component>
   <component name="debuggerHistoryManager">
     <expressions id="evaluateExpression">
+      <expression>
+        <expression-string>my_address</expression-string>
+        <language-id>ObjectiveC</language-id>
+        <evaluation-mode>EXPRESSION</evaluation-mode>
+      </expression>
       <expression>
         <expression-string>node_list</expression-string>
         <language-id>ObjectiveC</language-id>
@@ -280,8 +288,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/app_mate.c">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="4624">
-          <caret line="341" column="47" lean-forward="true" selection-start-line="341" selection-start-column="47" selection-end-line="341" selection-end-column="47" />
+        <state relative-caret-position="373">
+          <caret line="76" column="4" selection-start-line="76" selection-start-column="4" selection-end-line="76" selection-end-column="4" />
           <folding>
             <element signature="e#437#466#0" expanded="true" />
           </folding>
