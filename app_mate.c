@@ -322,7 +322,7 @@ void* udp_client(void *nothing) {
     int len;
     int is_error = 0;
     printf("client is ready\n");
-    while(1){ 
+    while(1){
         size_t iter = array_list_iter(node_list, &is_error);
         while(is_error >= 0) {
             pthread_mutex_lock(&lock);
@@ -344,6 +344,7 @@ void* udp_client(void *nothing) {
             }
             if (nn->no_response_counter >= TRY_COUNT) {
                 array_list_remove(node_list, nn, &is_error);
+                iter = array_list_iter(node_list, &is_error);
                 printf("No response\n");
             }
         }
