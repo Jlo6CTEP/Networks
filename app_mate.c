@@ -265,7 +265,7 @@ void * tcp_client(void * data) {
                 sendto(main_socket, (char *) ADD_NEW, CMD_LEN, 0,
                         (struct sockaddr *) &dest, sizeof(struct sockaddr));
 
-                sendto(main_socket, node, sizeof(network_node), 0,
+                sendto(main_socket, &self, sizeof(network_node), 0,
                        (struct sockaddr *) &dest, sizeof(struct sockaddr));
 
                 sendto(main_socket, (char *) DISCONNECT, CMD_LEN, 0,
@@ -349,7 +349,8 @@ void* udp_client(void *nothing) {
                 printf("No response\n");
             }
         }
-        sleep(5);
+        is_error = 0;
+        sleep(1);
     }
 }
 
