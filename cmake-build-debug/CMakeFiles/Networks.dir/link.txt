@@ -1,0 +1,1 @@
+/usr/bin/cc  -pthread -g   CMakeFiles/Networks.dir/app_mate.c.o CMakeFiles/Networks.dir/sockutil.c.o CMakeFiles/Networks.dir/alist.c.o  -o Networks 
