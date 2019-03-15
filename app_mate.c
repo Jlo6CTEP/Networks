@@ -1,11 +1,20 @@
-#include "sockutil.h"
-#include "alist.h"
-#include<pthread.h>
+#include "array_list/alist.h"
+#include <pthread.h>
 #include <netdb.h>
 #include <memory.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <ffi.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/ip.h>
+#include <string.h>
+#include <arpa/inet.h>
+#include <fcntl.h>
+#include <errno.h>
 
 #define UDP_SERVER_PORT 8080
 #define CMD_LEN 4

@@ -10,10 +10,8 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pthread")
 add_executable(Networks
         app_mate.c
         common.h
-        sockutil.c
-        sockutil.h
-        alist.c
-        alist.h)
+        array_list/alist.c
+        array_list/alist.h)
 
 #add_executable(Alist
 #        alist.c

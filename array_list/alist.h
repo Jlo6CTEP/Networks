@@ -10,7 +10,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
-#include "sockutil.h"
+#include <netinet/ip.h>
+#include <sys/socket.h>
 
 #define NAME_LENGTH 30
 
