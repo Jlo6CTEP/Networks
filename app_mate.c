@@ -35,7 +35,6 @@
 #define GET_LIST "glst"
 #define PING "ping"
 #define PONG "pong"
-#define SERVER_IP_ADDRESS "10.244.1.214"
 
 pthread_mutex_t lock;
 
@@ -121,6 +120,7 @@ void *tcp_server(void * nothing) {
 }
 
 void * tcp_client(void * data) {
+    self = (network_node){0};
     int cmd_len = 0;
     network_node *nn;
     memcpy(&cmd_len, data, sizeof(int));
@@ -135,10 +135,13 @@ void * tcp_client(void * data) {
     if (get_command(NAME, buffer, cmd_len, &index1) != -1 && index1 + 1 <= cmd_len) {
         memcpy(&self.name, buffer[index1 + 1], NAME_LENGTH);
         //handle make command
-        if (get_command(CREATE_NEW, buffer, cmd_len, &index1)) {
+        if (get_command(CREATE_NEW, buffer, cmd_len, &index1) != -1) {
             command_counter = CREATE_NEW_ID;
+            self.no_response_counter = 0;
+            self.node_address.sin_family = AF_INET;
+            self.node_address.sin_port  = htons(DEFAULT_PORT);
         //handle connect command
-        } else if (get_command(CONNECT, buffer, cmd_len, &index1)) {
+        } else if (get_command(CONNECT, buffer, cmd_len, &index1) != -1) {
             char address[20];
             char port[20];
             char *ptr;
@@ -149,7 +152,7 @@ void * tcp_client(void * data) {
                         if (port_number != 0 | port_number >= MAX_PORT_NUMBER) {
                         dest.sin_port = htons((uint16_t) port_number);
                         dest.sin_family = AF_INET;
-                        command_counter = CREATE_NEW_ID;
+                        command_counter = CONNECT_ID;
                         }else SHTF("port");
                     } else SHTF("address");
                 } else SHTF("port");
