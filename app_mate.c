@@ -24,6 +24,10 @@
 #include <arpa/inet.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <ifaddrs.h>
+#include <net/if.h>
+#include <arpa/inet.h>
+#include <sys/ioctl.h>
 
 #define UDP_SERVER_PORT 8080
 #define CMD_LEN 4
@@ -148,23 +152,32 @@ void *tcp_server(void * nothing) {
 }
 
 void * tcp_client(void * data) {
-    self = (network_node){0};
+    memset(&self, 0, sizeof(network_node));
     int cmd_len = 0;
-    network_node *nn;
+
     memcpy(&cmd_len, data, sizeof(int));
     void ** buffer = malloc(sizeof(void *) * cmd_len);
     memcpy(buffer, data + sizeof(int), sizeof(void *) * cmd_len);
-
     struct sockaddr_in dest;
 
     size_t index1 = 0;
     size_t index2 = 0;
     int command_counter;
     if (get_command(NAME, buffer, cmd_len, &index1) != -1 && index1 + 1 <= cmd_len) {
-        memcpy(&self.name, buffer[index1 + 1], NAME_LENGTH);
+
+        char ip_address[15];
+        int fd;
+        struct ifreq ifr;
+        fd = socket(AF_INET, SOCK_DGRAM, 0);
+        ifr.ifr_addr.sa_family = AF_INET;
+        memcpy(ifr.ifr_name, "eth0", IFNAMSIZ-1);
+        ioctl(fd, SIOCGIFADDR, &ifr);
+        close(fd);
+        strcpy((char *) ip_address, inet_ntoa(((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr));
+        
         self.no_response_counter = 0;
         self.node_address.sin_family = AF_INET;
-        self.node_address.sin_addr.s_addr = INADDR_ANY;
+        inet_pton(AF_INET, ip_address, &self.node_address.sin_addr);
         self.node_address.sin_port  = htons(DEFAULT_PORT);
 
         pthread_mutex_unlock(&init);
