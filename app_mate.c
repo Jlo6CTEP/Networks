@@ -323,12 +323,10 @@ void* udp_client(void *nothing) {
     while(1){
         size_t iter = array_list_iter(node_list, &is_error);
         while(is_error >= 0) {
-            printf("%d\n", (int) is_error);
             pthread_mutex_lock(&lock);
             network_node *nn = array_list_get(node_list, iter, &is_error);
             nn->node_address.sin_port = htons(UDP_SERVER_PORT);
             iter = array_list_next(node_list, iter, &is_error);
-            printf("%d\n", (int) is_error);
             pthread_mutex_unlock(&lock);
             printf("Pingin %s:%u now\n",
                    inet_ntoa(nn->node_address.sin_addr), ntohs(nn->node_address.sin_port));
