@@ -51,7 +51,7 @@ size_t array_list_add(p_array_list alist, network_node* item) {
 }
 
 size_t array_list_remove(p_array_list alist, network_node* item, int * is_error) {
-    for (size_t i = 0; i < alist->count; i++) {
+    for (size_t i = 0; i < alist->size; i++) {
         if (memcmp(&alist->array[i], item, sizeof(network_node)) == 0) {
             memset(&alist->array[i], 0, sizeof(network_node));
             alist->count--;
@@ -78,7 +78,7 @@ size_t array_list_iter(p_array_list alist, int * is_error) {
         *is_error = -1;
         return 0;
     }
-    for (size_t i = 0; i < alist->count; i++) {
+    for (size_t i = 0; i < alist->size; i++) {
         if (memcmp(&alist->array[i], &(network_node){0}, sizeof(network_node)) != 0) return i;
     }
     *is_error = -1;
@@ -86,7 +86,7 @@ size_t array_list_iter(p_array_list alist, int * is_error) {
 }
 
 size_t array_list_next(p_array_list alist, size_t index, int * is_error) {
-    for (size_t i = index + 1; i < alist->count; i++) {
+    for (size_t i = index + 1; i < alist->size; i++) {
         if (memcmp(&alist->array[i], &(network_node){0}, sizeof(network_node)) != 0) return (size_t) i;
     }
     *is_error = -1;
@@ -94,7 +94,7 @@ size_t array_list_next(p_array_list alist, size_t index, int * is_error) {
 }
 
 network_node* array_list_get(p_array_list alist, size_t index, int * is_error) {
-    if (index > alist->count) {
+    if (index > alist->size) {
         *is_error = -1;
         return NULL;
     }
