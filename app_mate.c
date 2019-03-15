@@ -330,7 +330,7 @@ void* udp_client(void *nothing) {
         while(is_error >= 0) {
             pthread_mutex_lock(&lock);
             network_node *nn = array_list_get(node_list, iter, &is_error);
-            nn->node_address.sin_port = UDP_SERVER_PORT;
+            nn->node_address.sin_port = htons(UDP_SERVER_PORT);
             iter = array_list_next(node_list, iter, &is_error);
             pthread_mutex_unlock(&lock);
             printf("Pingin %s:%u now\n",

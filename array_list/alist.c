@@ -52,8 +52,8 @@ size_t array_list_add(p_array_list alist, network_node* item) {
 
 size_t array_list_remove(p_array_list alist, network_node* item, int * is_error) {
     for (size_t i = 0; i < alist->size; i++) {
-        if (memcmp(&alist->array[i], item, sizeof(network_node)) != 0) {
-            memcpy(&alist->array[i], &(network_node){0}, sizeof(network_node));
+        if (memcmp(&alist->array[i], item, sizeof(network_node)) == 0) {
+            memset(&alist->array[i], 0, sizeof(network_node));
             alist->count--;
             *is_error = 0;
             return i;
