@@ -174,7 +174,8 @@ void * tcp_client(void * data) {
         ioctl(fd, SIOCGIFADDR, &ifr);
         close(fd);
         strcpy((char *) ip_address, inet_ntoa(((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr));
-        
+
+        strcpy(self.name, buffer[index1 + 1]);
         self.no_response_counter = 0;
         self.node_address.sin_family = AF_INET;
         inet_pton(AF_INET, ip_address, &self.node_address.sin_addr);
