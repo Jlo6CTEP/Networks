@@ -13,10 +13,17 @@
 #include <netinet/ip.h>
 #include <sys/socket.h>
 
-#define NAME_LENGTH 30
+#define NODENAME_LENGTH 30
+#define FILENAME_LENGTH 256
 
 typedef struct {
-    char name[NAME_LENGTH];
+    size_t size;
+    size_t count;
+    char (*file_list)[FILENAME_LENGTH];
+} file_list;
+
+typedef struct {
+    char name[NODENAME_LENGTH];
     int no_response_counter;
     struct sockaddr_in node_address;
 } network_node;
@@ -24,19 +31,19 @@ typedef struct {
 typedef struct {
     size_t size;
     size_t count;
-    network_node* array;
+    file_list* files;
+    network_node* nodes;
 } array_list;
 
 typedef array_list* p_array_list;
 
-p_array_list create_array_list(size_t size);
-void delete_array_list(p_array_list a_list);
-size_t expand_array_list(p_array_list a_list);
-size_t array_list_add(p_array_list a_list, network_node* item);
-size_t array_list_remove(p_array_list alist, network_node* item, int * is_error);
-size_t array_list_remove_at(p_array_list alist, size_t index, int * is_error);
-size_t array_list_iter(p_array_list alist, int * is_error);
-size_t array_list_next(p_array_list alist, size_t index, int * is_error);
-network_node* array_list_get(p_array_list alist, size_t index, int * is_error);
-void* array_list_serialize(p_array_list a_list, size_t * serialized_len);
+p_array_list create_array_list();
+void delete_array_list(p_array_list list);
+size_t expand_array_list(p_array_list list);
+size_t array_list_add(p_array_list list, network_node* item);
+size_t array_list_remove(p_array_list list, network_node* item, int * is_error);
+size_t array_list_iter(p_array_list list, int * is_error);
+size_t array_list_next(p_array_list list, size_t index, int * is_error);
+network_node* array_list_get(p_array_list list, size_t index, int * is_error);
+void* array_list_serialize(p_array_list list, size_t * serialized_len);
 array_list * array_list_deserialise(void * serialized);

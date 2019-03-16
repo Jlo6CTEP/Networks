@@ -356,7 +356,7 @@ int main(int argc, char **argv) {
     pthread_mutex_init(&lock, NULL);
     pthread_mutex_init(&init, NULL);
     pthread_mutex_lock(&init);
-    node_list = create_array_list(2);
+    node_list = create_array_list();
 
     void * data = malloc(sizeof(int) + sizeof(void *) * argc);
     memcpy(data, &argc, sizeof(int));
