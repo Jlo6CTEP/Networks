@@ -21,11 +21,20 @@
 int main() {
 
     network_node nn2 = {"kek1", 0, {AF_INET, htons(3180), {10}, 1}};
+    array_list_add_file(&nn2, "ffghf");
+    array_list_add_file(&nn2, "khhhkk");
     network_node nn3 = {"kek2", 0, {AF_INET, htons(3280), {10}, 2}};
+    array_list_add_file(&nn3, "fffgh");
+    array_list_add_file(&nn3, "kfghkk");
+    array_list_remove_file(&nn3, "fffgh");
     network_node nn4 = {"kek3", 0, {AF_INET, htons(3480), {10}, 3}};
+    array_list_add_file(&nn4, "ffggg");
+    array_list_add_file(&nn4, "kkfghk");
     network_node nn5 = {"kek4", 0, {AF_INET, htons(3780), {10}, 4}};
+    array_list_add_file(&nn5, "ffgfgh");
+    array_list_add_file(&nn5, "kkghghk");
 
-    p_array_list alist = create_array_list(2);
+    p_array_list alist = create_array_list();
 
     array_list_add(alist, &nn2);
     array_list_add(alist, &nn3);
@@ -42,7 +51,7 @@ int main() {
 
     size_t iter = array_list_iter(alist2, &is_shtf);
     while(is_shtf >= 0) {
-        printf("%s ", array_list_get(alist2, iter, &is_shtf)->name);
+        printf("%s ", array_list_get(alist2, iter, &is_shtf)->file_list[0]);
         iter = array_list_next(alist2, iter, &is_shtf);
     }
     printf("\n");

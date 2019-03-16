@@ -9,35 +9,20 @@
 
 #include "alist.h"
 #define NODES_INIT_SIZE 4
-#define FILES_INIT_SIZE 4
 
 p_array_list create_array_list() {
     network_node* array = (network_node *)malloc(sizeof(network_node) * NODES_INIT_SIZE);
     p_array_list list = (p_array_list)malloc(sizeof(array_list));
     memset(array, 0, sizeof(network_node) * NODES_INIT_SIZE);
     list->size = NODES_INIT_SIZE;
-    list->files->size = FILES_INIT_SIZE;
-    list->files->count = 0;
     list->count = 0;
     list->nodes = array;
     return list;
 }
 
 void delete_array_list(p_array_list list) {
-    free(list->files->file_list);
-    free(list->files);
     free(list->nodes);
     free(list);
-}
-size_t expand_file_list(p_array_list list) {
-    size_t size = list->files->size;
-    size_t new_size = size * 2;
-    char (*array)[FILENAME_LENGTH] = malloc(new_size * FILENAME_LENGTH);
-    memset(array, 0, new_size * FILENAME_LENGTH);
-    memcpy(array, list->files->file_list, size*FILENAME_LENGTH);
-    free(list->files->file_list);
-    list->files->file_list = array;
-    return new_size;
 }
 
 size_t expand_array_list(p_array_list list) {
@@ -66,11 +51,36 @@ size_t array_list_add(p_array_list list, network_node* item) {
     return index;
 }
 
+void array_list_add_file(network_node* item, char * file) {
+    for (int i = 0; i < FILE_NUMBER; i++) {
+        if (strcmp(item->file_list[i], "") == 0)
+            strcpy(item->file_list[i], file);
+    }
+}
+
+void array_list_remove_file(network_node* item, char * file) {
+    for (int i = 0; i < FILE_NUMBER; i++) {
+        if (strcmp(item->file_list[i], file) == 0)
+            strcpy(item->file_list[i], "");
+    }
+}
+
+int array_list_exists_file(network_node* item, char * file) {
+    for (int i = 0; i < FILE_NUMBER; i++) {
+        if (strcmp(item->file_list[i], file) == 0)
+            return 1;
+    }
+    return 0;
+}
+
+void array_list_clear(network_node* item) {
+    for (int i = 0; i < FILE_NUMBER; i++)
+        strcpy(item->file_list[i], "");
+}
+
 size_t array_list_remove(p_array_list list, network_node* item, int * is_error) {
     for (size_t i = 0; i < list->size; i++) {
         if (memcmp(&list->nodes[i], item, sizeof(network_node)) == 0) {
-            free(&list->files->file_list);
-            free(&list->files);
             memset(&list->nodes[i], 0, sizeof(network_node));
             list->count--;
             *is_error = 0;
@@ -109,7 +119,6 @@ network_node* array_list_get(p_array_list list, size_t index, int * is_error) {
     return &list->nodes[index];
 }
 
-/* fix this stuff. recheck the code above. Create file daemon. Send/receive this stuff
 void* array_list_serialize(p_array_list list, size_t * serialized_len) {
     *serialized_len = 2 * sizeof(size_t) + list->count * sizeof(network_node);
     void* buffer = malloc(*serialized_len);
@@ -120,11 +129,11 @@ void* array_list_serialize(p_array_list list, size_t * serialized_len) {
 }
 
 array_list * array_list_deserialise(void * serialized) {
-    p_array_list buffer = create_array_list(1);
+    p_array_list buffer = create_array_list();
     memcpy(buffer, serialized, 2* sizeof(size_t));
     network_node * array = (network_node *)malloc(sizeof(network_node) * buffer->count);
     memcpy(array, serialized + 2 * sizeof(size_t) , buffer->count * sizeof(network_node));
     buffer->nodes = array;
     return buffer;
 }
-*/
+

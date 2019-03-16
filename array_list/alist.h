@@ -14,24 +14,20 @@
 #include <sys/socket.h>
 
 #define NODENAME_LENGTH 30
-#define FILENAME_LENGTH 256
+#define FILENAME_LENGTH 64
+#define FILE_NUMBER 64
 
-typedef struct {
-    size_t size;
-    size_t count;
-    char (*file_list)[FILENAME_LENGTH];
-} file_list;
 
 typedef struct {
     char name[NODENAME_LENGTH];
     int no_response_counter;
     struct sockaddr_in node_address;
+    char file_list[FILE_NUMBER][FILENAME_LENGTH];
 } network_node;
 
 typedef struct {
     size_t size;
     size_t count;
-    file_list* files;
     network_node* nodes;
 } array_list;
 
@@ -47,3 +43,7 @@ size_t array_list_next(p_array_list list, size_t index, int * is_error);
 network_node* array_list_get(p_array_list list, size_t index, int * is_error);
 void* array_list_serialize(p_array_list list, size_t * serialized_len);
 array_list * array_list_deserialise(void * serialized);
+void array_list_add_file(network_node* item, char * file);
+void array_list_remove_file(network_node* item, char * file);
+void array_list_clear(network_node* item);
+int array_list_exists_file(network_node* item, char * file);
