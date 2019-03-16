@@ -47,7 +47,7 @@
 #define CONNECT_ID 1
 #define GET_ID 2
 
-#define SHARED_FOLDER "./shared_folder"
+#define SHARED_FOLDER "../shared_folder/"
 #define MAX_PORT_NUMBER 65535
 
 #define SHTF(param) {printf("Incorrect parameters: %s\n", param);\
@@ -326,7 +326,7 @@ void * tcp_client(void * data) {
             sendto(main_socket, filename, FILENAME_LENGTH, 0,
                    (struct sockaddr *) &dest, sizeof(struct sockaddr));
 
-            printf("file with name %s is transferring", filename);
+            printf("file with name %s is transferring\n", filename);
             size_t len = 0;
             socklen_t addr_len = sizeof(struct sockaddr);
             recvfrom(main_socket, &len, sizeof(size_t), 0,
@@ -342,7 +342,7 @@ void * tcp_client(void * data) {
             strcat(filepath, filename);
 
 
-            int fp = open(filepath, O_WRONLY);
+            int fp = open(filepath, O_WRONLY | O_CREAT, S_IROTH | S_IWOTH);
             write(fp, file_buffer, len);
             close(fp);
 
@@ -451,7 +451,7 @@ void * file_daemon(void *nothing) {
             while ((dir = readdir(d)) != NULL) {
                 if (strcmp(dir->d_name, ".") != 0 && strcmp(dir->d_name, "..") != 0) {
                 array_list_add_file(&self, dir->d_name);
-                printf("%s added\n", dir->d_name);
+                //printf("%s added\n", dir->d_name);
                 }
             }
             closedir(d);
