@@ -29,6 +29,7 @@
 #include <arpa/inet.h>
 #include <sys/ioctl.h>
 #include <dirent.h>
+#include <fcntl.h>
 
 #define UDP_SERVER_PORT 8080
 #define CMD_LEN 4
@@ -46,6 +47,7 @@
 #define CONNECT_ID 1
 #define GET_ID 2
 
+#define SHARED_FOLDER "./shared_folder"
 #define MAX_PORT_NUMBER 65535
 
 #define SHTF(param) {printf("Incorrect parameters: %s\n", param);\
@@ -147,13 +149,42 @@ void *tcp_server(void * nothing) {
                     printf("Client %s:%u is bailing now\n",
                            inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
                     break;
+                } else if (memcmp(command, (char *)GET_FILE, CMD_LEN) == 0) {
+
+                    char filename[FILENAME_LENGTH];
+                    recvfrom(comm_socket, filename, FILENAME_LENGTH, 0,
+                             (struct sockaddr *) &client_addr, &addr_len);
+
+                    char filepath[FILENAME_LENGTH * 2];
+                    strcpy(filepath, SHARED_FOLDER);
+                    strcat(filepath, filename);
+
+                    FILE *fp;
+                    char ch;
+                    long size = 0;
+                    fp = fopen(filepath, "r");
+                    fseek(fp, 0, 2);    /* file pointer at the end of file */
+                    size = ftell(fp);   /* take a position of file pointer un size variable */
+                    fclose(fp);
+
+                    sendto(comm_socket, &size, sizeof(long), 0, (const struct sockaddr *) &client_addr,
+                           addr_len);
+
+                    int file = open(filepath, O_RDONLY);
+                    void * file_content= malloc((size_t) size);
+                    read(file, file_content, (size_t) size);
+
+                    sendto(comm_socket, file_content, size, 0, (const struct sockaddr *) &client_addr,
+                           addr_len);
+
                 }
             }
         }
     }
 }
 
-void tcp_client_connect(struct sockaddr_in * dest) {
+
+void tcp_client_connect(struct sockaddr_in dest) {
     socklen_t addr_len = sizeof(struct sockaddr);
     int main_socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 
@@ -221,7 +252,7 @@ void * tcp_client(void * data) {
     memcpy(&cmd_len, data, sizeof(int));
     void ** buffer = malloc(sizeof(void *) * cmd_len);
     memcpy(buffer, data + sizeof(int), sizeof(void *) * cmd_len);
-    struct sockaddr_in dest;
+    struct sockaddr_in dest = {0};
 
     size_t index1 = 0;
     size_t index2 = 0;
@@ -279,12 +310,48 @@ void * tcp_client(void * data) {
 
     switch (command_counter) {
         case CONNECT_ID: {
-            tcp_client_connect(&dest);
+            tcp_client_connect(dest);
             break;
         }
         case GET_ID: {
-            tcp_client_connect(&dest);
-            printf("shit\n");
+            tcp_client_connect(dest);
+            printf("execute order file transfer\n");
+            int main_socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+
+            connect(main_socket, (struct sockaddr *) &dest, sizeof(struct sockaddr));
+
+            sendto(main_socket, (char *) GET_FILE, CMD_LEN, 0,
+                   (struct sockaddr *) &dest, sizeof(struct sockaddr));
+
+            sendto(main_socket, filename, FILENAME_LENGTH, 0,
+                   (struct sockaddr *) &dest, sizeof(struct sockaddr));
+
+            printf("file with name %s is transferring", filename);
+            size_t len = 0;
+            socklen_t addr_len = sizeof(struct sockaddr);
+            recvfrom(main_socket, &len, sizeof(size_t), 0,
+                     (struct sockaddr *) &dest, &addr_len);
+
+            void* file_buffer = malloc(len);
+
+            recvfrom(main_socket, file_buffer, len, 0,
+                     (struct sockaddr *) &dest, &addr_len);
+
+            char filepath[FILENAME_LENGTH * 2];
+            strcpy(filepath, SHARED_FOLDER);
+            strcat(filepath, filename);
+
+
+            int fp = open(filepath, O_WRONLY);
+            write(fp, file_buffer, len);
+            close(fp);
+
+            printf("done file transfer\n");
+
+            sendto(main_socket, (char *) DISCONNECT, CMD_LEN, 0,
+                   (struct sockaddr *) &dest, sizeof(struct sockaddr));
+            close(main_socket);
+
             break;
         }
         case CREATE_NEW_ID:
@@ -377,7 +444,7 @@ void * file_daemon(void *nothing) {
     while (1) {
         DIR *d;
         struct dirent *dir;
-        d = opendir("./");
+        d = opendir(SHARED_FOLDER);
         pthread_mutex_lock(&lock_file_list);
         array_list_clear(&self);
         if (d) {
