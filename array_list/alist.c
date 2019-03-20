@@ -7,6 +7,7 @@
  * ----------------------------------------------------------------------------
  */
 
+#include <stdio.h>
 #include "alist.h"
 
 p_array_list create_array_list() {
@@ -48,6 +49,13 @@ void delete_array_list(p_array_list list) {
     }
     free(list->nodes);
     free(list);
+}
+
+void delete_network_node(network_node * nn) {
+    for (int j = 0; j < nn->file_list_count; j++)
+        free(nn->file_list[j]);
+    free(nn->file_list);
+    free(nn);
 }
 
 size_t enlarge_array_list(p_array_list list) {
@@ -94,14 +102,14 @@ size_t enlarge_file_list(network_node *item) {
 
     char **array = (char **) malloc(new_size * sizeof(void *));
     for (int i = 0; i < new_size; i++) {
-    array[i] = (char *) malloc(FILENAME_LENGTH);
-    memset(array[i], 0, FILENAME_LENGTH);
+        array[i] = malloc(FILENAME_LENGTH);
+        memset(array[i], 0, FILENAME_LENGTH);
     }
 
     for (int i = 0; i < item->file_list_count; i++)
         strcpy(array[i], item->file_list[i]);
 
-    for (int i = 0; i < item->file_list_size; i++)
+    for (int i = 0; i < item->file_list_count; i++)
         free(item->file_list[i]);
     free(item->file_list);
     item->file_list = array;
@@ -115,7 +123,6 @@ void array_list_remove_file(network_node* item, char * file) {
             memset(item->file_list[i], 0, FILENAME_LENGTH);
             item->file_list_count--;
         }
-
     }
 }
 
@@ -129,12 +136,14 @@ int array_list_exists_file(network_node* item, char * file) {
 
 void array_list_clear_files(network_node *item) {
     for (int i = 0; i < item->file_list_size; i++)
-        strcpy(item->file_list[i], "");
+        memset(item->file_list[i], 0, FILENAME_LENGTH);
 }
 
 size_t array_list_remove(p_array_list list, network_node* item, int * is_error) {
     for (size_t i = 0; i < list->size; i++) {
-        if (memcmp(&list->nodes[i], item, sizeof(network_node)) == 0) {
+        if (memcmp(&list->nodes[i], item, sizeof(network_node) - sizeof(void *)) == 0) {
+            for (int j = 0; j < list->nodes[i].file_list_size; j++)
+                free(list->nodes[i].file_list[j]);
             free(list->nodes[i].file_list);
             memset(&list->nodes[i], 0, sizeof(network_node));
             list->count--;
@@ -159,7 +168,7 @@ size_t array_list_iter(p_array_list list, int * is_error) {
 }
 
 size_t array_list_next(p_array_list list, size_t index, int * is_error) {
-    for (size_t i = index + 1; i < list->count; i++) {
+    for (size_t i = index + 1; i < list->size; i++) {
         if (memcmp(&list->nodes[i], &(network_node){0}, sizeof(network_node)) != 0) return (size_t) i;
     }
     *is_error = -1;
@@ -173,6 +182,35 @@ network_node* array_list_get(p_array_list list, size_t index, int * is_error) {
     }
     return &list->nodes[index];
 }
+void* network_node_serialize(network_node * nn, size_t * serialized_len) {
+    *serialized_len = sizeof(network_node) - sizeof(void *) + nn->file_list_count*FILENAME_LENGTH;
+
+    void* buffer = malloc(*serialized_len);
+    size_t  offset = 0;
+    memset(buffer, 0, *serialized_len);
+    memcpy(buffer, nn, sizeof(network_node) - sizeof(void *));
+    offset += sizeof(network_node) - sizeof(void *);
+    for (int j = 0; j < nn->file_list_count; j++) {
+        memcpy(buffer + offset, nn->file_list[j], FILENAME_LENGTH);
+        offset += FILENAME_LENGTH;
+    }
+    return buffer;
+}
+
+network_node * network_node_deserialize(void * buff, size_t * shift) {
+    network_node *nn = (network_node *)malloc(sizeof(network_node));
+    *shift = sizeof(network_node) - sizeof(void *);
+    memcpy(nn, buff, *shift);
+    char **file_list = (char **) malloc(nn->file_list_size * sizeof(void *));
+    for (int i = 0; i < nn->file_list_count; i++) {
+        file_list[i] = malloc(FILENAME_LENGTH);
+        memset(file_list[i], 0, FILENAME_LENGTH);
+        memcpy(file_list[i], buff + *shift, FILENAME_LENGTH);
+        *shift += FILENAME_LENGTH;
+        nn->file_list = file_list;
+    }
+    return nn;
+}
 
 void* array_list_serialize(p_array_list list, size_t * serialized_len) {
     *serialized_len = 2 * sizeof(size_t) + list->count * (sizeof(network_node) - sizeof(void *));
@@ -185,12 +223,11 @@ void* array_list_serialize(p_array_list list, size_t * serialized_len) {
     memcpy(buffer, list, sizeof(size_t) * 2);
     offset += sizeof(size_t) * 2;
     for (int i = 0; i < list->count; i ++) {
-        memcpy(buffer + offset, &list->nodes[i], sizeof(network_node) - sizeof(char *));
-        offset += sizeof(network_node) - sizeof(char *);
-        for (int j = 0; j < list->nodes[i].file_list_count; j++) {
-            memcpy(buffer + offset, list->nodes[i].file_list[j], FILENAME_LENGTH);
-            offset += FILENAME_LENGTH;
-        }
+        size_t length = 0;
+        void * buff = network_node_serialize(&list->nodes[i], &length);
+        memcpy(buffer + offset, buff, length);
+        offset += length;
+        free(buff);
     }
     return buffer;
 }
@@ -199,18 +236,12 @@ array_list * array_list_deserialise(void * serialized) {
     p_array_list buffer = create_array_list();
     memcpy(buffer, serialized, 2* sizeof(size_t));
     size_t offset = 2* sizeof(size_t);
-    network_node * array = (network_node *)malloc(sizeof(network_node) * buffer->count);
+    network_node * array = (network_node *)malloc(sizeof(network_node) * buffer->size);
+    memset(array, 0, sizeof(network_node) * buffer->size);
     for (int i = 0; i < buffer->count; i ++) {
-        memcpy(&array[i], serialized + offset, sizeof(network_node) - sizeof(char *));
-        offset += sizeof(network_node) - sizeof(void *);
-        char ** file_list = (char **)malloc(array[i].file_list_count * sizeof(void *));
-        for (int j = 0; j < array[i].file_list_count; j++) {
-            file_list[j] = malloc(FILENAME_LENGTH);
-            memset(file_list[j], 0, FILENAME_LENGTH);
-            strcpy(file_list[j], serialized + offset);
-            offset += FILENAME_LENGTH;
-        }
-        array[i].file_list = file_list;
+        size_t shift = 0;
+        array[i] = *network_node_deserialize(serialized + offset, &shift);
+        offset += shift;
     }
     buffer->nodes = array;
     return buffer;

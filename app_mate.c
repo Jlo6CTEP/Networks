@@ -119,8 +119,18 @@ void *tcp_server(void * nothing) {
             if (memcmp(command, (char *)ADD_NEW, CMD_LEN) == 0) {
                 network_node node;
                 memset(&node, 0 , sizeof(network_node));
-                recvfrom(comm_socket, (void *)&node, sizeof(network_node), 0,
+
+                size_t node_len = 0;
+                recvfrom(comm_socket, &node_len, sizeof(size_t), 0,
                         (struct sockaddr *) &client_addr, &addr_len);
+                void * serialized_node = malloc(node_len);
+                recvfrom(comm_socket, serialized_node, node_len, 0,
+                         (struct sockaddr *) &client_addr, &addr_len);
+
+                node = *network_node_deserialize(serialized_node, &node_len);
+
+                free(serialized_node);
+
                 printf("New node %s:%u was added to list\n",
                         inet_ntoa(node.node_address.sin_addr),
                         ntohs(node.node_address.sin_port));
@@ -178,6 +188,7 @@ void *tcp_server(void * nothing) {
 
                 sendto(comm_socket, file_content, size, 0, (const struct sockaddr *) &client_addr,
                        addr_len);
+                free(file_content);
                 memset(command, 0, CMD_LEN);
             }
         }
@@ -207,6 +218,8 @@ void tcp_client_connect(struct sockaddr_in dest) {
     pthread_mutex_lock(&lock);
     node_list = array_list_deserialise(node_buffer);
 
+    free(node_buffer);
+
     sendto(main_socket, (char *) DISCONNECT, CMD_LEN, 0,
            (struct sockaddr *) &dest, sizeof(struct sockaddr));
     close(main_socket);
@@ -235,7 +248,13 @@ void tcp_client_connect(struct sockaddr_in dest) {
         sendto(main_socket, (char *) ADD_NEW, CMD_LEN, 0,
                (struct sockaddr *) &dest, sizeof(struct sockaddr));
 
-        sendto(main_socket, &self, sizeof(network_node), 0,
+        size_t self_len = 0;
+        void *serialized_self = network_node_serialize(&self, &self_len);
+
+        sendto(main_socket, &self_len, sizeof(size_t), 0,
+               (struct sockaddr *) &dest, sizeof(struct sockaddr));
+
+        sendto(main_socket, serialized_self, self_len, 0,
                (struct sockaddr *) &dest, sizeof(struct sockaddr));
 
         sendto(main_socket, (char *) DISCONNECT, CMD_LEN, 0,
@@ -252,6 +271,7 @@ void * tcp_client(void * data) {
     memcpy(&cmd_len, data, sizeof(int));
     void ** buffer = malloc(sizeof(void *) * cmd_len);
     memcpy(buffer, data + sizeof(int), sizeof(void *) * cmd_len);
+    free(data);
     struct sockaddr_in dest = {0};
 
     size_t index1 = 0;
@@ -306,6 +326,9 @@ void * tcp_client(void * data) {
             //for this time just leave it alone
         }
     } else SHTF("name");
+
+    free(buffer);
+
 
 
     switch (command_counter) {
