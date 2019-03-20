@@ -446,7 +446,7 @@ void * file_daemon(void *nothing) {
         struct dirent *dir;
         d = opendir(SHARED_FOLDER);
         pthread_mutex_lock(&lock_file_list);
-        array_list_clear(&self);
+        array_list_clear_files(&self);
         if (d) {
             while ((dir = readdir(d)) != NULL) {
                 if (strcmp(dir->d_name, ".") != 0 && strcmp(dir->d_name, "..") != 0) {

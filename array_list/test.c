@@ -20,29 +20,45 @@
 
 int main() {
 
-    network_node nn2 = {"kek1", 0, {AF_INET, htons(3180), {10}, 1}};
-    array_list_add_file(&nn2, "ffghf");
-    array_list_add_file(&nn2, "khhhkk");
-    network_node nn3 = {"kek2", 0, {AF_INET, htons(3280), {10}, 2}};
-    array_list_add_file(&nn3, "fffgh");
-    array_list_add_file(&nn3, "kfghkk");
-    array_list_remove_file(&nn3, "fffgh");
-    network_node nn4 = {"kek3", 0, {AF_INET, htons(3480), {10}, 3}};
-    array_list_add_file(&nn4, "ffggg");
-    array_list_add_file(&nn4, "kkfghk");
-    network_node nn5 = {"kek4", 0, {AF_INET, htons(3780), {10}, 4}};
-    array_list_add_file(&nn5, "ffgfgh");
-    array_list_add_file(&nn5, "kkghghk");
+    network_node * nn2 = create_network_node();
+    strcpy(nn2->name, "kek");
+    nn2->node_address = (struct sockaddr_in){AF_INET, htons(3280), {10}, 2};
+    array_list_add_file(nn2, "ffghf");
+    array_list_add_file(nn2, "khhhkk");
+    array_list_add_file(nn2, "ffghf");
+    array_list_add_file(nn2, "khhhkk");
+    array_list_add_file(nn2, "ffghf");
+    array_list_add_file(nn2, "khhhkk");
+    array_list_clear_files(nn2);
+
+    network_node * nn3 = create_network_node();
+    strcpy(nn3->name, "kek2");
+    nn3->node_address = (struct sockaddr_in){AF_INET, htons(3280), {10}, 2};
+    array_list_add_file(nn3, "fffgh");
+    array_list_add_file(nn3, "kfghkk");
+    array_list_remove_file(nn3, "fffgh");
+
+    network_node * nn4 = create_network_node();
+    strcpy(nn4->name, "kek3");
+    nn4->node_address = (struct sockaddr_in){AF_INET, htons(3280), {10}, 2};
+    array_list_add_file(nn4, "ffggg");
+    array_list_add_file(nn4, "kkfghk");
+
+    network_node * nn5 = create_network_node();
+    strcpy(nn5->name, "kek4");
+    nn5->node_address = (struct sockaddr_in){AF_INET, htons(3280), {10}, 2};
+    array_list_add_file(nn5, "ffgfgh");
+    array_list_add_file(nn5, "kkghghk");
 
     p_array_list alist = create_array_list();
 
-    array_list_add(alist, &nn2);
-    array_list_add(alist, &nn3);
-    array_list_add(alist, &nn4);
-    array_list_add(alist, &nn5);
+    array_list_add(alist, nn2);
+    array_list_add(alist, nn3);
+    array_list_add(alist, nn4);
+    array_list_add(alist, nn5);
 
     printf("size: %ld, count: %ld\n", alist->size, alist->count);
-    int is_shtf;
+    int is_shtf = 1;
     size_t length;
 
     void * serialized = array_list_serialize(alist, &length);
@@ -57,6 +73,7 @@ int main() {
     printf("\n");
 
     delete_array_list(alist);
+    printf("first list was deleted");
     delete_array_list(alist2);
     return 0;
 }
