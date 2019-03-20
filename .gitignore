@@ -4,3 +4,4 @@ cmake-build-debug/CMakeFiles/*
 cmake-build-debug/Makefile
 cmake-build-debug/Networks.cbp
 cmake-build-debug/cmake_install.cmake
+shared_folder/*

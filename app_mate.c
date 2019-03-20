@@ -47,7 +47,7 @@
 #define CONNECT_ID 1
 #define GET_ID 2
 
-#define SHARED_FOLDER "./shared_folder"
+#define SHARED_FOLDER "../shared_folder/"
 #define MAX_PORT_NUMBER 65535
 
 #define SHTF(param) {printf("Incorrect parameters: %s\n", param);\
@@ -114,70 +114,71 @@ void *tcp_server(void * nothing) {
             printf("Connection accepted from client : %s:%u\n",
                    inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
 
-            while (1) {
-                char command[CMD_LEN];
-                recvfrom(comm_socket, command, CMD_LEN, 0, (struct sockaddr *) &client_addr, &addr_len);
-                if (memcmp(command, (char *)ADD_NEW, CMD_LEN) == 0) {
-                    network_node node;
-                    memset(&node, 0 , sizeof(network_node));
-                    recvfrom(comm_socket, (void *)&node, sizeof(network_node), 0,
-                            (struct sockaddr *) &client_addr, &addr_len);
-                    printf("New node %s:%u was added to list\n",
-                            inet_ntoa(node.node_address.sin_addr),
-                            ntohs(node.node_address.sin_port));
-                    pthread_mutex_lock(&lock);
-                    array_list_add(node_list, &node);
-                    pthread_mutex_unlock(&lock);
-                } else if (memcmp(command, (char *)GET_LIST, CMD_LEN) == 0) {
-                    size_t serialized_len;
+            char command[CMD_LEN];
+            recvfrom(comm_socket, command, CMD_LEN, 0, (struct sockaddr *) &client_addr, &addr_len);
+            if (memcmp(command, (char *)ADD_NEW, CMD_LEN) == 0) {
+                network_node node;
+                memset(&node, 0 , sizeof(network_node));
+                recvfrom(comm_socket, (void *)&node, sizeof(network_node), 0,
+                        (struct sockaddr *) &client_addr, &addr_len);
+                printf("New node %s:%u was added to list\n",
+                        inet_ntoa(node.node_address.sin_addr),
+                        ntohs(node.node_address.sin_port));
+                pthread_mutex_lock(&lock);
+                array_list_add(node_list, &node);
+                pthread_mutex_unlock(&lock);
+                memset(command, 0, CMD_LEN);
+            } else if (memcmp(command, (char *)GET_LIST, CMD_LEN) == 0) {
+                size_t serialized_len;
 
-                    array_list_add(node_list, &self);
-                    void *serialized = array_list_serialize(node_list, &serialized_len);
-                    int is_shtf = 0;
-                    array_list_remove(node_list, &self, &is_shtf);
+                array_list_add(node_list, &self);
+                void *serialized = array_list_serialize(node_list, &serialized_len);
+                int is_shtf = 0;
+                array_list_remove(node_list, &self, &is_shtf);
 
-                    array_list * pl = array_list_deserialise(serialized);
+                array_list * pl = array_list_deserialise(serialized);
 
-                    printf("List provided for %s:%u\n",
-                           inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
-                    sendto(comm_socket, &serialized_len, sizeof(size_t), 0, (const struct sockaddr *) &client_addr,
-                           addr_len);
-                    sendto(comm_socket, serialized, serialized_len, 0, (const struct sockaddr *) &client_addr,
-                           addr_len);
-                } else if ((memcmp(command, (char *)DISCONNECT, CMD_LEN) == 0)) {
-                    close(comm_socket);
-                    printf("Client %s:%u is bailing now\n",
-                           inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
-                    break;
-                } else if (memcmp(command, (char *)GET_FILE, CMD_LEN) == 0) {
+                printf("List provided for %s:%u\n",
+                       inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
+                sendto(comm_socket, &serialized_len, sizeof(size_t), 0, (const struct sockaddr *) &client_addr,
+                       addr_len);
+                sendto(comm_socket, serialized, serialized_len, 0, (const struct sockaddr *) &client_addr,
+                       addr_len);
+                memset(command, 0, CMD_LEN);
+            } else if ((memcmp(command, (char *)DISCONNECT, CMD_LEN) == 0)) {
+                close(comm_socket);
+                printf("Client %s:%u is bailing now\n",
+                       inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
+                memset(command, 0, CMD_LEN);
+                break;
+            } else if (memcmp(command, (char *)GET_FILE, CMD_LEN) == 0) {
 
-                    char filename[FILENAME_LENGTH];
-                    recvfrom(comm_socket, filename, FILENAME_LENGTH, 0,
-                             (struct sockaddr *) &client_addr, &addr_len);
+                char filename[FILENAME_LENGTH];
+                recvfrom(comm_socket, filename, FILENAME_LENGTH, 0,
+                         (struct sockaddr *) &client_addr, &addr_len);
 
-                    char filepath[FILENAME_LENGTH * 2];
-                    strcpy(filepath, SHARED_FOLDER);
-                    strcat(filepath, filename);
+                char filepath[FILENAME_LENGTH * 2];
+                strcpy(filepath, SHARED_FOLDER);
+                strcat(filepath, filename);
 
-                    FILE *fp;
-                    char ch;
-                    long size = 0;
-                    fp = fopen(filepath, "r");
-                    fseek(fp, 0, 2);    /* file pointer at the end of file */
-                    size = ftell(fp);   /* take a position of file pointer un size variable */
-                    fclose(fp);
+                FILE *fp;
+                char ch;
+                long size = 0;
+                fp = fopen(filepath, "r");
+                fseek(fp, 0, 2);    /* file pointer at the end of file */
+                size = ftell(fp);   /* take a position of file pointer un size variable */
+                fclose(fp);
 
-                    sendto(comm_socket, &size, sizeof(long), 0, (const struct sockaddr *) &client_addr,
-                           addr_len);
+                sendto(comm_socket, &size, sizeof(long), 0, (const struct sockaddr *) &client_addr,
+                       addr_len);
 
-                    int file = open(filepath, O_RDONLY);
-                    void * file_content= malloc((size_t) size);
-                    read(file, file_content, (size_t) size);
+                int file = open(filepath, O_RDONLY);
+                void * file_content= malloc((size_t) size);
+                read(file, file_content, (size_t) size);
 
-                    sendto(comm_socket, file_content, size, 0, (const struct sockaddr *) &client_addr,
-                           addr_len);
-
-                }
+                sendto(comm_socket, file_content, size, 0, (const struct sockaddr *) &client_addr,
+                       addr_len);
+                memset(command, 0, CMD_LEN);
             }
         }
     }
@@ -264,7 +265,7 @@ void * tcp_client(void * data) {
         struct ifreq ifr;
         fd = socket(AF_INET, SOCK_DGRAM, 0);
         ifr.ifr_addr.sa_family = AF_INET;
-        memcpy(ifr.ifr_name, "eth0", IFNAMSIZ-1);
+        memcpy(ifr.ifr_name, "eth1", IFNAMSIZ-1);
         ioctl(fd, SIOCGIFADDR, &ifr);
         close(fd);
         strcpy((char *) ip_address, inet_ntoa(((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr));
@@ -326,7 +327,7 @@ void * tcp_client(void * data) {
             sendto(main_socket, filename, FILENAME_LENGTH, 0,
                    (struct sockaddr *) &dest, sizeof(struct sockaddr));
 
-            printf("file with name %s is transferring", filename);
+            printf("file with name %s is transferring\n", filename);
             size_t len = 0;
             socklen_t addr_len = sizeof(struct sockaddr);
             recvfrom(main_socket, &len, sizeof(size_t), 0,
@@ -342,7 +343,7 @@ void * tcp_client(void * data) {
             strcat(filepath, filename);
 
 
-            int fp = open(filepath, O_WRONLY);
+            int fp = open(filepath, O_WRONLY | O_CREAT, S_IROTH | S_IWOTH);
             write(fp, file_buffer, len);
             close(fp);
 
@@ -446,12 +447,12 @@ void * file_daemon(void *nothing) {
         struct dirent *dir;
         d = opendir(SHARED_FOLDER);
         pthread_mutex_lock(&lock_file_list);
-        array_list_clear(&self);
+        array_list_clear_files(&self);
         if (d) {
             while ((dir = readdir(d)) != NULL) {
                 if (strcmp(dir->d_name, ".") != 0 && strcmp(dir->d_name, "..") != 0) {
                 array_list_add_file(&self, dir->d_name);
-                printf("%s added\n", dir->d_name);
+                //printf("%s added\n", dir->d_name);
                 }
             }
             closedir(d);
