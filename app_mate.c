@@ -247,7 +247,6 @@ void tcp_client_connect(struct sockaddr_in dest) {
 
 void * tcp_client(void * data) {
     char filename[FILENAME_LENGTH];
-    memset(&self, 0, sizeof(network_node));
     int cmd_len = 0;
 
     memcpy(&cmd_len, data, sizeof(int));
@@ -469,6 +468,7 @@ int main(int argc, char **argv) {
     pthread_mutex_init(&lock_file_list, NULL);
     pthread_mutex_lock(&init);
     node_list = create_array_list();
+    self = *create_network_node();
 
     void * data = malloc(sizeof(int) + sizeof(void *) * argc);
     memcpy(data, &argc, sizeof(int));
