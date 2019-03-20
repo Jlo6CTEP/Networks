@@ -15,7 +15,6 @@
 
 #define NODENAME_LENGTH 30
 #define FILENAME_LENGTH 64
-#define FILE_NUMBER 64
 #define FILES_INIT_SIZE 4
 #define NODES_INIT_SIZE 4
 

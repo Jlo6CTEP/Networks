@@ -137,6 +137,7 @@ int array_list_exists_file(network_node* item, char * file) {
 void array_list_clear_files(network_node *item) {
     for (int i = 0; i < item->file_list_size; i++)
         memset(item->file_list[i], 0, FILENAME_LENGTH);
+    item->file_list_count = 0;
 }
 
 size_t array_list_remove(p_array_list list, network_node* item, int * is_error) {
@@ -169,7 +170,7 @@ size_t array_list_iter(p_array_list list, int * is_error) {
 
 size_t array_list_next(p_array_list list, size_t index, int * is_error) {
     for (size_t i = index + 1; i < list->size; i++) {
-        if (memcmp(&list->nodes[i], &(network_node){0}, sizeof(network_node)) != 0) return (size_t) i;
+        if (memcmp(&list->nodes[i], &(network_node){0}, sizeof(network_node) - 3*sizeof(void *)) != 0) return (size_t) i;
     }
     *is_error = -1;
     return 0;
