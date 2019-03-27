@@ -70,7 +70,7 @@ pthread_mutex_t lock_file_list;
 
 p_array_list node_list;
 network_node self;
-
+/*
 int get_command(char * parameter, void ** line, int line_size, size_t * index) {
     for(size_t i = 0; i < line_size; i++ ){
         if (strcmp(line[i], parameter) == 0 && i < line_size) {
@@ -79,6 +79,66 @@ int get_command(char * parameter, void ** line, int line_size, size_t * index) {
         }
     }
     return -1;
+}
+
+void parse_stuff(const char * src, int len, char ** n_dest, char ** f_dest, size_t * f_count) {
+    char buffer[256];
+    n_dest = (char **)malloc(3 * sizeof(void *));
+    for (int i = 0; i < 3; i ++) {
+        n_dest[i] = malloc(256);
+        memset(n_dest[i], 0, 256);
+    }
+    memset(buffer, 0, 256);
+    size_t semicolon_count = 0;
+    size_t file_count = 0;
+    size_t index = 0;
+    size_t buffer_count = 0;
+    while (semicolon_count < 3 & index < len) {
+        if (src[index] == *";") {
+            semicolon_count++;
+            buffer_count = 0;
+            strcpy(n_dest[semicolon_count], buffer);
+            memset(buffer, 0, 256);
+        } else {
+            buffer[buffer_count] = src[index];
+            buffer_count++;
+        }
+        if (src[index] == *"\0")
+            break;
+        index++;
+    }
+    size_t next_index = index;
+    while (index < len) {
+        if(src[index] == *",")
+            file_count++;
+        if (src[index] == *"\0")
+            break;
+        index++;
+    }
+    file_count++;
+    *f_count = file_count;
+
+    f_dest = (char **)malloc(file_count * sizeof(void *));
+    for (int i = 0; i < file_count; i++) {
+        f_dest[i] = malloc(256);
+        memset(f_dest[i], 0, 256);
+    }
+
+    index  = next_index;
+    file_count = 0;
+    buffer_count = 0;
+    while (index < len) {
+        if(src[index] == *",") {
+            strcpy(f_dest[file_count],buffer);
+            file_count++;
+        } else {
+            buffer[buffer_count] = src[index];
+            buffer_count++;
+        }
+        if (src[index] == *"\0")
+            break;
+        index++;
+    }
 }
 
 
@@ -175,8 +235,8 @@ void *tcp_server(void * nothing) {
                 char ch;
                 long size = 0;
                 fp = fopen(filepath, "r");
-                fseek(fp, 0, 2);    /* file pointer at the end of file */
-                size = ftell(fp);   /* take a position of file pointer un size variable */
+                fseek(fp, 0, 2);
+                size = ftell(fp);
                 fclose(fp);
 
                 sendto(comm_socket, &size, sizeof(long), 0, (const struct sockaddr *) &client_addr,
@@ -385,80 +445,7 @@ void * tcp_client(void * data) {
 
     }
     return NULL;
-}
-
-void* udp_server(void *nothing) {
-    char buffer[CMD_LEN]; 
-
-    struct sockaddr_in servaddr, cliaddr; 
-      
-    int socket_fd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-    memset(&servaddr, 0, sizeof(servaddr)); 
-    memset(&cliaddr, 0, sizeof(cliaddr)); 
-      
-    servaddr.sin_family = AF_INET;
-    servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
-    servaddr.sin_port = htons(UDP_SERVER_PORT); 
-
-    unsigned int addr_len = sizeof(cliaddr);
-    bind(socket_fd, (struct sockaddr *)&servaddr, sizeof(servaddr));
-      
-    printf("server is ready\n");
-    while(1){
-        recvfrom(socket_fd, buffer, CMD_LEN, 0, ( struct sockaddr *) &cliaddr, &addr_len);
-        printf("I was pinged by %s\n", inet_ntoa(cliaddr.sin_addr));
-        if (strcmp(buffer, (char *)PING) == 0) {
-            sendto(socket_fd, (const char *)PONG, CMD_LEN, 0, (const struct sockaddr *) &cliaddr, addr_len); 
-        }
-    }
-}
-
-void* udp_client(void *nothing) {
-    int sockfd; 
-    char buffer[CMD_LEN]; 
-    struct sockaddr_in servaddr;
-
-    struct timeval tv;
-    tv.tv_sec = 0;
-    tv.tv_usec = 100000;
-  
-    sockfd = socket(AF_INET, SOCK_DGRAM, 0);
-    setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO,&tv,sizeof(tv));
-    memset(&servaddr, 0, sizeof(servaddr)); 
-      
-    int len;
-    int is_error = 0;
-    printf("client is ready\n");
-    while(1){
-        size_t iter = array_list_iter(node_list, &is_error);
-        while(is_error >= 0) {
-            pthread_mutex_lock(&lock);
-            network_node *nn = array_list_get(node_list, iter, &is_error);
-            nn->node_address.sin_port = htons(UDP_SERVER_PORT);
-            iter = array_list_next(node_list, iter, &is_error);
-            pthread_mutex_unlock(&lock);
-            printf("Pingin %s:%u now\n",
-                   inet_ntoa(nn->node_address.sin_addr), ntohs(nn->node_address.sin_port));
-            sendto(sockfd, (const char *)PING, CMD_LEN, 0, (const struct sockaddr *) &nn->node_address,
-                    sizeof(nn->node_address));
-            ssize_t n = recvfrom(sockfd, (char *)buffer, CMD_LEN, 0, (struct sockaddr *) &nn->node_address,
-                                 (socklen_t *) &len);
-            if (n >= 0 && strcmp((char *)PONG, (char *)buffer) == 0) {
-                printf("Good\n");
-                nn->no_response_counter = 0;
-            } else {
-                nn->no_response_counter++;
-            }
-            if (nn->no_response_counter >= TRY_COUNT) {
-                array_list_remove(node_list, nn, &is_error);
-                iter = array_list_iter(node_list, &is_error);
-                printf("No response\n");
-            }
-        }
-        is_error = 0;
-        sleep(1);
-    }
-}
+}*/
 
 void * file_daemon(void *nothing) {
     pthread_mutex_lock(&init);
@@ -469,18 +456,18 @@ void * file_daemon(void *nothing) {
         struct dirent *dir;
         d = opendir(SHARED_FOLDER);
         pthread_mutex_lock(&lock_file_list);
-        array_list_clear_files(&self);
         if (d) {
             while ((dir = readdir(d)) != NULL) {
                 if (strcmp(dir->d_name, ".") != 0 && strcmp(dir->d_name, "..") != 0) {
-                array_list_add_file(&self, dir->d_name);
-                //printf("%s added\n", dir->d_name);
+                    array_list_add_file(&self, dir->d_name);
+                    printf("%s added\n", dir->d_name);
                 }
             }
             closedir(d);
         }
         pthread_mutex_unlock(&lock_file_list);
         sleep(10);
+        printf("done");
     }
 }
 
@@ -489,23 +476,17 @@ int main(int argc, char **argv) {
     pthread_mutex_init(&lock, NULL);
     pthread_mutex_init(&init, NULL);
     pthread_mutex_init(&lock_file_list, NULL);
-    pthread_mutex_lock(&init);
+    //pthread_mutex_lock(&init);
     node_list = create_array_list();
-    self = *create_network_node();
+    self = *(network_node *)malloc(sizeof(network_node));
 
-    void * data = malloc(sizeof(int) + sizeof(void *) * argc);
-    memcpy(data, &argc, sizeof(int));
-    memcpy(data + sizeof(int), argv, sizeof(void *) * argc);
-
-    pthread_t server,client, tcp_serv, tcp_cli, daemon;
-    pthread_create(&server, NULL, udp_server, NULL);
-    pthread_create(&client, NULL, udp_client, NULL);
-    pthread_create(&tcp_cli, NULL, tcp_client, data);
-    pthread_create(&tcp_serv, NULL, tcp_server, NULL);
+    pthread_t /*server,client, tcp_serv, tcp_cli,*/ daemon;
+    //pthread_create(&tcp_cli, NULL, tcp_client, NULL);
+    //pthread_create(&tcp_serv, NULL, tcp_server, NULL);
     pthread_create(&daemon, NULL, file_daemon, NULL);
-    pthread_join(server, NULL);
-    pthread_join(client, NULL);
-    pthread_join(tcp_serv, NULL);
-    pthread_join(tcp_cli, NULL);
+    //pthread_join(server, NULL);
+    //pthread_join(client, NULL);
+    //pthread_join(tcp_serv, NULL);
+    //pthread_join(tcp_cli, NULL);
     pthread_join(daemon, NULL);
 }

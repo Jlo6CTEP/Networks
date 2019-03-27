@@ -7,12 +7,12 @@ include_directories(.)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pthread")
 
-add_executable(Networks
-        app_mate.c
-        array_list/alist.c
-        array_list/alist.h)
-
-#add_executable(Alist
+#add_executable(Networks
+#        app_mate.c
 #        array_list/alist.c
-#        array_list/alist.h
-#        array_list/test.c)
+#        array_list/alist.h)
+
+add_executable(Alist
+        array_list/alist.c
+        array_list/alist.h
+        array_list/test.c)

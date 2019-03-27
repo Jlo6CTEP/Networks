@@ -20,13 +20,8 @@
 
 int main() {
 
-    network_node * nn2 = create_network_node();
-    strcpy(nn2->name, "kek");
-    nn2->node_address = (struct sockaddr_in){AF_INET, htons(3280), {10}, 2};
-    size_t ekk1;
-    size_t f;
-
-
+    network_node * nn2 = (network_node *)malloc(sizeof(network_node));
+    strcpy(nn2->node, "Alpha:127.0.0.1:8080");
     array_list_add_file(nn2, "ffghf");
     array_list_add_file(nn2, "khhhkk");
     array_list_add_file(nn2, "ffghf");
@@ -34,34 +29,28 @@ int main() {
     array_list_add_file(nn2, "ffghf");
     array_list_add_file(nn2, "khhhkk");
 
-    network_node * nn3 = create_network_node();
-    strcpy(nn3->name, "kek2");
-    nn3->node_address = (struct sockaddr_in){AF_INET, htons(3280), {10}, 2};
+    network_node * nn3 = (network_node *)malloc(sizeof(network_node));
+    strcpy(nn3->node, "Beta:127.0.0.1:8080");
     array_list_add_file(nn3, "fffgh");
     array_list_add_file(nn3, "kfghkk");
-    array_list_remove_file(nn3, "fffgh");
 
-    network_node * nn4 = create_network_node();
-    strcpy(nn4->name, "kek3");
-    nn4->node_address = (struct sockaddr_in){AF_INET, htons(3280), {10}, 2};
+    network_node * nn4 = (network_node *)malloc(sizeof(network_node));
+    strcpy(nn4->node, "Gamma:127.0.0.1:8080");
     array_list_add_file(nn4, "ffggg");
     array_list_add_file(nn4, "kkfghk");
 
-    network_node * nn5 = create_network_node();
-    strcpy(nn5->name, "kek4");
-    nn5->node_address = (struct sockaddr_in){AF_INET, htons(3280), {10}, 2};
+    network_node * nn5 = (network_node *)malloc(sizeof(network_node));
+    strcpy(nn5->node, "Tango:127.0.0.1:8080");
     array_list_add_file(nn5, "ffgfgh");
     array_list_add_file(nn5, "kkghghk");
 
-    network_node * nn6 = create_network_node();
-    strcpy(nn6->name, "kek4");
-    nn6->node_address = (struct sockaddr_in){AF_INET, htons(3280), {10}, 2};
+    network_node * nn6 = (network_node *)malloc(sizeof(network_node));
+    strcpy(nn6->node, "Charlie:127.0.0.1:8080");
     array_list_add_file(nn6, "ffgfgh");
     array_list_add_file(nn6, "kkghghk");
 
-    network_node * nn7 = create_network_node();
-    strcpy(nn7->name, "kek4");
-    nn7->node_address = (struct sockaddr_in){AF_INET, htons(3280), {10}, 2};
+    network_node * nn7 = (network_node *)malloc(sizeof(network_node));
+    strcpy(nn7->node, "Delta:127.0.0.1:8080");
     array_list_add_file(nn7, "ffgfgh");
     array_list_add_file(nn7, "kkghghk");
 
@@ -78,18 +67,15 @@ int main() {
     int is_shtf = 1;
     size_t length;
 
-    void * serialized = array_list_serialize(alist, &length);
-    p_array_list alist2 = array_list_deserialise(serialized);
 
-
-    size_t iter = array_list_iter(alist2, &is_shtf);
+    size_t iter = array_list_iter(alist, &is_shtf);
     while(is_shtf >= 0) {
-        printf("%s \n", array_list_get(alist2, iter, &is_shtf)->name);
-        iter = array_list_next(alist2, iter, &is_shtf);
+        printf("%s \n", array_list_get(alist, iter, &is_shtf)->files);
+        iter = array_list_next(alist, iter, &is_shtf);
     }
     printf("kek\n");
 
-    delete_array_list(alist2);
+    delete_array_list(alist);
 
     return 0;
 }
