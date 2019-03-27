@@ -13,8 +13,9 @@
 #include <netinet/ip.h>
 #include <sys/socket.h>
 
-#define NODE_LENGTH 256
-#define FILE_LIST_LENGTH 768
+#define NODE_LENGTH 128
+#define FILE_LIST_LENGTH 384
+#define MSG_LEN NODE_LENGTH + FILE_LIST_LENGTH
 #define FILENAME_LENGTH 64
 #define NODES_INIT_SIZE 4
 
@@ -39,4 +40,10 @@ size_t array_list_add(p_array_list list, network_node* item);
 size_t array_list_iter(p_array_list list, int * is_error);
 size_t array_list_next(p_array_list list, size_t index, int * is_error);
 network_node* array_list_get(p_array_list list, size_t index, int * is_error);
+void split_msg(network_node * nn, char * msg);
+char * concat_msg(network_node * nn);
 void array_list_add_file(network_node* item, char * file);
+char ** parse_nodes(network_node * nn, size_t * last_pos);
+char ** parse_files(network_node * nn, size_t * count, size_t * last_pos);
+struct sockaddr_in * get_sockadrr(network_node * nn);
+char ** parse_file(char * path, int * word_count);

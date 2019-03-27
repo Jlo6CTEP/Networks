@@ -8,6 +8,8 @@
  */
 
 #include <stdio.h>
+#include <arpa/inet.h>
+#include <fcntl.h>
 #include "alist.h"
 
 p_array_list create_array_list() {
@@ -28,6 +30,7 @@ char ** parse_files(network_node * nn, size_t * count, size_t * last_pos) {
             file_count++;
         i++;
     }
+    file_count++;
     char ** array = (char **)malloc(file_count * sizeof(void *));
     for (int x = 0; x < file_count; x++) {
         array[x] = malloc(FILENAME_LENGTH);
@@ -43,22 +46,84 @@ char ** parse_files(network_node * nn, size_t * count, size_t * last_pos) {
         if (nn->files[i] == ',') {
             strcpy(array[array_count], buffer);
             memset(buffer, 0, FILENAME_LENGTH);
+            buffer_count = 0;
+            array_count++;
         } else {
             buffer[buffer_count] = nn->files[i];
             buffer_count++;
         }
         i++;
     }
+    strcpy(array[array_count], buffer);
+    memset(buffer, 0, FILENAME_LENGTH);
     *count = file_count;
     *last_pos = i;
     return array;
 }
 
-char ** parse_nodes(network_node * nn, size_t * last_pos) {
+struct sockaddr_in * get_sockadrr(network_node * nn) {
+    struct sockaddr_in * address;
+    address = malloc(sizeof(struct sockaddr_in));
+    memset(address, 0, sizeof(struct sockaddr_in));
 
+    size_t size = 0;
+    char ** parsed = parse_nodes(nn, &size);
+
+    address->sin_family = AF_INET;
+    inet_pton(AF_INET, parsed[1], &address->sin_addr);
+    address->sin_port  = htons((uint16_t)atoi(parsed[2]));
+    return address;
 }
 
 
+char ** parse_nodes(network_node * nn, size_t * last_pos) {
+    char buffer[FILENAME_LENGTH];
+    memset(buffer, 0, FILENAME_LENGTH);
+    size_t buffer_count = 0;
+    size_t array_count = 0;
+    size_t i = 0;
+
+    char ** array = (char **)malloc(3 * sizeof(void *));
+    for (int x = 0; x < 3; x++) {
+        array[x] = malloc(FILENAME_LENGTH);
+        memset(array[x], 0, FILENAME_LENGTH);
+    }
+
+    while (i < FILE_LIST_LENGTH && nn->node[i] != '\0') {
+        if (nn->node[i] == ':') {
+            strcpy(array[array_count], buffer);
+            memset(buffer, 0, FILENAME_LENGTH);
+            buffer_count = 0;
+            array_count++;
+        } else {
+            buffer[buffer_count] = nn->node[i];
+            buffer_count++;
+        }
+        i++;
+    }
+    *last_pos = i;
+    return array;
+}
+
+void split_msg(network_node * nn, char * msg) {
+    size_t i = 0;
+    size_t splitter = 0;
+    while (i < FILE_LIST_LENGTH && msg[i] != '\0') {
+        if (msg[i] == ':')
+            splitter = i;
+        i++;
+    }
+    memcpy(nn->node, msg, splitter + 1);
+    memcpy(nn->files, msg + splitter + 1, FILE_LIST_LENGTH);
+}
+
+char * concat_msg(network_node * nn) {
+    char * buffer = malloc(MSG_LEN);
+    memset(buffer, 0, MSG_LEN);
+    strcat(buffer, nn->node);
+    strcat(buffer, nn->files);
+    return buffer;
+}
 
 void delete_array_list(p_array_list list) {
     free(list->nodes);
@@ -131,7 +196,7 @@ size_t array_list_iter(p_array_list list, int * is_error) {
 
 size_t array_list_next(p_array_list list, size_t index, int * is_error) {
     for (size_t i = index + 1; i < list->size; i++) {
-        if (memcmp(&list->nodes[i], &(network_node){0}, sizeof(network_node) - 3*sizeof(void *)) != 0) return (size_t) i;
+        if (memcmp(&list->nodes[i], &(network_node){0}, sizeof(network_node)) != 0) return (size_t) i;
     }
     *is_error = -1;
     return 0;
@@ -143,4 +208,52 @@ network_node* array_list_get(p_array_list list, size_t index, int * is_error) {
         return NULL;
     }
     return &list->nodes[index];
+}
+
+char ** parse_file(char * path, int * word_count) {
+
+    FILE *fp;
+    char ch;
+    long size = 0;
+    printf("filepath is %s\n", path);
+    fp = fopen(path, "r");
+    fseek(fp, 0, 2);
+    size = ftell(fp);
+    fclose(fp);
+
+    printf("Size %li\n", size);
+
+    int file = open(path, O_RDONLY);
+    char * buffer = malloc((size_t) size);
+    memset(buffer, 0, size);
+    read(file, buffer, size);
+    *word_count = 1;
+    for (int i = 0; i < size; i++) {
+        if (buffer[i] == ' ')
+            *word_count = *word_count + 1;
+    }
+
+    char ** parsed_file = (char **)malloc(*word_count * sizeof(void *));
+    for (int i = 0; i < *word_count; i++) {
+        parsed_file[i] = malloc(MSG_LEN);
+        memset(parsed_file[i], 0, MSG_LEN);
+    }
+
+    char word_buffer[MSG_LEN];
+    memset(word_buffer, 0, MSG_LEN);
+    int buffer_iter = 0;
+    int parsed_counter = 0;
+    for(int i = 0; i < size; i++) {
+        if (buffer[i] == *" "){
+            strcpy(parsed_file[parsed_counter], word_buffer);
+            parsed_counter++;
+            memset(word_buffer, 0, MSG_LEN);
+            buffer_iter = 0;
+        } else {
+            word_buffer[buffer_iter] = buffer[i];
+            buffer_iter ++;
+        }
+    }
+    strcpy(parsed_file[parsed_counter], word_buffer);
+    return parsed_file;
 }

@@ -19,49 +19,41 @@
 
 
 int main() {
-
+    size_t lol = 0;
     network_node * nn2 = (network_node *)malloc(sizeof(network_node));
-    strcpy(nn2->node, "Alpha:127.0.0.1:8080");
-    array_list_add_file(nn2, "ffghf");
-    array_list_add_file(nn2, "khhhkk");
-    array_list_add_file(nn2, "ffghf");
-    array_list_add_file(nn2, "khhhkk");
-    array_list_add_file(nn2, "ffghf");
-    array_list_add_file(nn2, "khhhkk");
+    char str[FILE_LIST_LENGTH];
+    memset(str, 0, FILE_LIST_LENGTH);
+    strcpy(str, "Alpha:127.0.0.1:8080:sfgfsdg,gdfgdg,qqwd,sfdsfsd\0");
+    split_msg(nn2, str);
+    array_list_add_file(nn2, "lolkekmem");
 
+    struct sockaddr_in * kek;
+    kek = get_sockadrr(nn2);
+
+    char str2[FILE_LIST_LENGTH];
+    memset(str2, 0, FILE_LIST_LENGTH);
+    strcpy(str2, "Beta:127.0.0.1:8080:afdssdf,ertd,sdfgreg,sesd\0");
     network_node * nn3 = (network_node *)malloc(sizeof(network_node));
-    strcpy(nn3->node, "Beta:127.0.0.1:8080");
-    array_list_add_file(nn3, "fffgh");
-    array_list_add_file(nn3, "kfghkk");
+    split_msg(nn3, str2);
 
+    char str3[FILE_LIST_LENGTH];
+    memset(str3, 0, FILE_LIST_LENGTH);
+    strcpy(str3, "Gamma:127.0.0.1:8080:skfldgh,eoriut,sdfsd\0");
     network_node * nn4 = (network_node *)malloc(sizeof(network_node));
-    strcpy(nn4->node, "Gamma:127.0.0.1:8080");
-    array_list_add_file(nn4, "ffggg");
-    array_list_add_file(nn4, "kkfghk");
+    split_msg(nn4, str3);
 
-    network_node * nn5 = (network_node *)malloc(sizeof(network_node));
-    strcpy(nn5->node, "Tango:127.0.0.1:8080");
-    array_list_add_file(nn5, "ffgfgh");
-    array_list_add_file(nn5, "kkghghk");
+    char filepath[MSG_LEN];
+    memset(filepath, 0, MSG_LEN);
+    strcpy(filepath, "../shared_folder/temp.txt");
+    int kke = 0;
+    char ** parsed = parse_file(filepath, &kke);
 
-    network_node * nn6 = (network_node *)malloc(sizeof(network_node));
-    strcpy(nn6->node, "Charlie:127.0.0.1:8080");
-    array_list_add_file(nn6, "ffgfgh");
-    array_list_add_file(nn6, "kkghghk");
-
-    network_node * nn7 = (network_node *)malloc(sizeof(network_node));
-    strcpy(nn7->node, "Delta:127.0.0.1:8080");
-    array_list_add_file(nn7, "ffgfgh");
-    array_list_add_file(nn7, "kkghghk");
 
     p_array_list alist = create_array_list();
 
     array_list_add(alist, nn2);
     array_list_add(alist, nn3);
     array_list_add(alist, nn4);
-    array_list_add(alist, nn5);
-    array_list_add(alist, nn6);
-    array_list_add(alist, nn7);
 
     printf("size: %ld, count: %ld\n", alist->size, alist->count);
     int is_shtf = 1;
@@ -70,7 +62,7 @@ int main() {
 
     size_t iter = array_list_iter(alist, &is_shtf);
     while(is_shtf >= 0) {
-        printf("%s \n", array_list_get(alist, iter, &is_shtf)->files);
+        printf("%s \n", array_list_get(alist, iter, &is_shtf)->node);
         iter = array_list_next(alist, iter, &is_shtf);
     }
     printf("kek\n");
