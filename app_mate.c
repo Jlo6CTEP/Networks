@@ -461,6 +461,8 @@ int main(int argc, char **argv) {
     pthread_mutex_lock(&client);
     pthread_mutex_lock(&server);
     node_list = create_array_list();
+    black_list = create_array_list();
+    current = create_array_list();
     self = (network_node *)malloc(sizeof(network_node));
     memset(self, 0, sizeof(network_node));
 
