@@ -13,9 +13,9 @@
 #include <netinet/ip.h>
 #include <sys/socket.h>
 
-#define NODE_LENGTH 128
-#define FILE_LIST_LENGTH 384
-#define MSG_LEN NODE_LENGTH + FILE_LIST_LENGTH
+#define NODE_LENGTH 256
+#define FILE_LIST_LENGTH 760
+#define MSG_LEN NODE_LENGTH + FILE_LIST_LENGTH + sizeof(size_t)
 #define FILENAME_LENGTH 64
 #define NODES_INIT_SIZE 4
 
@@ -23,6 +23,7 @@
 typedef struct {
     char node[NODE_LENGTH];
     char files[FILE_LIST_LENGTH];
+    size_t counter;
 } network_node;
 
 typedef struct {
