@@ -202,7 +202,7 @@ void * tcp_client(void * data) {
         struct ifreq ifr;
         fd = socket(AF_INET, SOCK_DGRAM, 0);
         ifr.ifr_addr.sa_family = AF_INET;
-        memcpy(ifr.ifr_name, "wifi0", IFNAMSIZ-1);
+        memcpy(ifr.ifr_name, "eth0", IFNAMSIZ-1);
         ioctl(fd, SIOCGIFADDR, &ifr);
         close(fd);
         strcpy((char *) ip_address, inet_ntoa(((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr));
@@ -264,13 +264,13 @@ void * tcp_client(void * data) {
             int main_socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
             connect(main_socket, (struct sockaddr *) get_sockadrr(dest), sizeof(struct sockaddr));
             sendto(main_socket, &command , sizeof(int), 0,
-                   (struct sockaddr *) &dest, sizeof(struct sockaddr));
+                   (struct sockaddr *) get_sockadrr(dest), sizeof(struct sockaddr));
 
             sendto(main_socket, concat_msg(self), MSG_LEN, 0,
-                   (struct sockaddr *) &dest, sizeof(struct sockaddr));
+                   (struct sockaddr *) get_sockadrr(dest), sizeof(struct sockaddr));
 
             sendto(main_socket, &zero, sizeof(int), 0,
-                   (struct sockaddr *) &dest, sizeof(struct sockaddr));
+                   (struct sockaddr *) get_sockadrr(dest), sizeof(struct sockaddr));
             printf("done sync");
             break;
         }
@@ -283,15 +283,15 @@ void * tcp_client(void * data) {
 
             int command = htonl(REQUEST);
             sendto(main_socket, &command, sizeof(int), 0,
-                   (struct sockaddr *) &dest, sizeof(struct sockaddr));
+                   (struct sockaddr *) get_sockadrr(dest), sizeof(struct sockaddr));
 
             sendto(main_socket, file_name, MSG_LEN, 0,
-                   (struct sockaddr *) &dest, sizeof(struct sockaddr));
+                   (struct sockaddr *) get_sockadrr(dest), sizeof(struct sockaddr));
 
             int32_t len = 0;
             socklen_t addr_len = sizeof(struct sockaddr);
             recvfrom(main_socket, &len, sizeof(int32_t), 0,
-                     (struct sockaddr *) &dest, &addr_len);
+                     (struct sockaddr *) get_sockadrr(dest), &addr_len);
 
             len = htonl(len);
 
@@ -301,7 +301,7 @@ void * tcp_client(void * data) {
                 char word[MSG_LEN];
                 memset(word, 0, MSG_LEN);
                 recvfrom(main_socket, word, MSG_LEN, 0,
-                         (struct sockaddr *) &dest, &addr_len);
+                         (struct sockaddr *) get_sockadrr(dest), &addr_len);
                 strcat(file_content, word);
                 strcat(file_content, " ");
                 printf("word %s\n", word);
