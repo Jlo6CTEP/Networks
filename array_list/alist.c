@@ -61,7 +61,7 @@ char ** parse_files(network_node * nn, size_t * count, size_t * last_pos) {
     return array;
 }
 
-struct sockaddr_in * get_sockadrr(network_node * nn) {
+struct sockaddr_in * get_sockadrr(network_node *nn) {
     struct sockaddr_in * address;
     address = malloc(sizeof(struct sockaddr_in));
     memset(address, 0, sizeof(struct sockaddr_in));
@@ -161,6 +161,17 @@ size_t array_list_add(p_array_list list, network_node* item) {
     return index;
 }
 
+size_t array_list_remove(p_array_list list, network_node * item) {
+    for (size_t i = 0; i < list->size; i++) {
+        if (memcmp(&list->nodes[i], item, NODE_LENGTH) == 0) {
+            memset(&list->nodes[i], 0, sizeof(network_node));
+            list->count++;
+            return i;
+        }
+    }
+    return 0;
+}
+
 void array_list_add_file(network_node* item, char * file) {
     size_t file_count = 0;
     size_t last_pos = 0;
@@ -208,6 +219,36 @@ network_node* array_list_get(p_array_list list, size_t index, int * is_error) {
         return NULL;
     }
     return &list->nodes[index];
+}
+
+size_t hash_string(char * str) {
+    unsigned long hash = 5381;
+    size_t c;
+    while (c = *str++)
+        hash = ((hash << 5) + hash) + c;
+    return hash;
+}
+
+size_t hash_nn(network_node *nn) {
+    int i = 0;
+    for (i = 0; nn->node[i] != ':'; i++);
+    return hash_string(nn->node + i);
+}
+
+int contains_by_hash(p_array_list list, size_t hashed) {
+    for (int i = 0; i < list->count; i++) {
+        if (hash_nn(&list->nodes[i]) == hashed)
+            return 1;
+    }
+    return 0;
+}
+
+network_node * get_by_hash(p_array_list list, size_t hashed) {
+    for (int i = 0; i < list->count; i++) {
+        if (hash_nn(&list->nodes[i]) == hashed)
+            return &list->nodes[i];
+    }
+    return 0;
 }
 
 char ** parse_file(char * path, int * word_count) {

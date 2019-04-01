@@ -46,6 +46,7 @@
 #define CREATE_NEW 2
 #define SYN 1
 #define REQUEST 0
+#define MAX_ATTEMPTS 5
 
 #define SHARED_FOLDER "../shared_folder/"
 
@@ -57,13 +58,99 @@
 #define SYNTAX_SYN "-s -a[address] -p[port] -n[name] in case of syncing with existing network"
 #define SYNTAX_REQUEST "-r -a[address] -p[port] -n[name] -f[filename] in case of syncing with existing network"
 
-#define GET_FILE "gtfl"
-#define DISCONNECT "bail"
-
-pthread_mutex_t lock_node_list, client, lock_file_list, server;
+pthread_mutex_t lock_node_list, client, lock_file_list, server , lock_black_list, lock_current;
 
 p_array_list node_list;
+p_array_list black_list;
+p_array_list current;
 network_node * self;
+
+void *connection_handler(void * data) {
+    struct sockaddr_in client_addr;
+    memcpy(&client_addr, data, sizeof(struct sockaddr_in));
+
+    socklen_t addr_len;
+    memcpy(&addr_len, data + sizeof(struct sockaddr_in), sizeof(socklen_t));
+
+    int comm_socket;
+    memcpy(&addr_len, data + sizeof(struct sockaddr_in) + sizeof(socklen_t), sizeof(int));
+
+    size_t hashed;
+    memcpy(&hashed, data + sizeof(struct sockaddr_in) + sizeof(socklen_t) + sizeof(int), sizeof(size_t));
+
+    printf("Connection accepted from client : %s:%u\n",
+           inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
+
+    unsigned int command = 100500;
+    recvfrom(comm_socket, &command, sizeof(int), 0, (struct sockaddr *) &client_addr, &addr_len);
+    command = htonl(command);
+    printf("command %d\n", command);
+    if (command == SYN) {
+
+        char * buffer = malloc(MSG_LEN);
+        memset(buffer, 0, MSG_LEN);
+
+        recvfrom(comm_socket, buffer, MSG_LEN, 0,
+                 (struct sockaddr *) &client_addr, &addr_len);
+
+        network_node * nn = (network_node *)malloc(sizeof(network_node));
+        memset(nn, 0, sizeof(network_node));
+        split_msg(nn, buffer);
+        free(buffer);
+
+        pthread_mutex_lock(&lock_node_list);
+        array_list_add(node_list, nn);
+        int length = 0;
+        recvfrom(comm_socket, &length, sizeof(int), 0,
+                 (struct sockaddr *) &client_addr, &addr_len);
+        for (int i = 0; i < length; i++) {
+            network_node *nn2 = (network_node *) malloc(sizeof(network_node));
+            memset(nn2, 0, sizeof(network_node));
+            char *buffer2 = malloc(MSG_LEN);
+            memset(buffer2, 0, MSG_LEN);
+            recvfrom(comm_socket, buffer2, MSG_LEN, 0,
+                     (struct sockaddr *) &client_addr, &addr_len);
+            split_msg(nn2, buffer2);
+            array_list_add(node_list, nn2);
+            free(buffer2);
+        }
+        pthread_mutex_unlock(&lock_node_list);
+
+    } else if (command == REQUEST) {
+
+        char * filename = malloc(MSG_LEN);
+        memset(filename, 0, MSG_LEN);
+        printf("Receiving filename\n");
+        recvfrom(comm_socket, filename, MSG_LEN, 0,
+                 (struct sockaddr *) &client_addr, &addr_len);
+
+        char filepath[MSG_LEN];
+        memset(filepath, 0, MSG_LEN);
+        strcpy(filepath, SHARED_FOLDER);
+        strcat(filepath, filename);
+        printf("filepath is %s\n", filepath);
+
+        int word_count = 0;
+        char ** parsed_file = parse_file(filepath, &word_count);
+        printf("file was %d long\n", word_count);
+        int word_count2 = htonl(word_count);
+        sendto(comm_socket, &word_count2, sizeof(int), 0,
+               (struct sockaddr *) &client_addr, sizeof(struct sockaddr));
+
+        for (int i = 0; i < word_count; i ++) {
+            printf("word %s\n", parsed_file[i]);
+            sendto(comm_socket, parsed_file[i], MSG_LEN, 0,
+                   (struct sockaddr *) &client_addr, sizeof(struct sockaddr));
+            usleep(50000);
+        }
+    }
+
+    pthread_mutex_lock(&lock_current);
+    get_by_hash(current, hashed)->counter--;
+    pthread_mutex_unlock(&lock_current);
+
+    return NULL;
+}
 
 
 //done
@@ -96,71 +183,46 @@ void *tcp_server(void * nothing) {
 
             comm_socket = accept(main_socket, (struct sockaddr *) &client_addr, &addr_len);
 
-            printf("Connection accepted from client : %s:%u\n",
-                   inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
+            int flag = 1;
 
-            unsigned int command = 100500;
-            recvfrom(comm_socket, &command, sizeof(int), 0, (struct sockaddr *) &client_addr, &addr_len);
-            command = htonl(command);
-            printf("command %d\n", command);
-            if (command == SYN) {
+            network_node * nn = (network_node *)malloc(sizeof(network_node));
+            sprintf(nn->node, ":%s:%d:", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
+            size_t hashed = hash_nn(nn);
 
-                char * buffer = malloc(MSG_LEN);
-                memset(buffer, 0, MSG_LEN);
-
-                recvfrom(comm_socket, buffer, MSG_LEN, 0,
-                        (struct sockaddr *) &client_addr, &addr_len);
-
-                network_node * nn = (network_node *)malloc(sizeof(network_node));
-                split_msg(nn, buffer);
-                free(buffer);
-                pthread_mutex_lock(&lock_node_list);
-                array_list_add(node_list, nn);
-
-                int length = 0;
-
-                recvfrom(comm_socket, &length, sizeof(int), 0,
-                         (struct sockaddr *) &client_addr, &addr_len);
-
-                for (int i = 0; i < length; i ++) {
-                    network_node * nn2 = (network_node *)malloc(sizeof(network_node));
-                    char * buffer2 = malloc(MSG_LEN);
-                    memset(buffer2, 0, MSG_LEN);
-
-                    recvfrom(comm_socket, buffer2, MSG_LEN, 0,
-                             (struct sockaddr *) &client_addr, &addr_len);
-                    split_msg(nn2, buffer2);
-                    array_list_add(node_list, nn2);
-                    free(buffer2);
+            if (contains_by_hash(black_list, hashed) == 0)
+                flag = 0;
+            if (contains_by_hash(current, hashed)) {
+                if (get_by_hash(current, hashed)->counter >= MAX_ATTEMPTS) {
+                    pthread_mutex_lock(&lock_black_list);
+                    array_list_add(black_list, nn);
+                    pthread_mutex_unlock(&lock_black_list);
+                    pthread_mutex_lock(&lock_current);
+                    array_list_remove(current, nn);
+                    pthread_mutex_unlock(&lock_current);
+                    flag = 0;
+                } else {
+                    pthread_mutex_lock(&lock_current);
+                    get_by_hash(current, hashed)->counter++;
+                    pthread_mutex_unlock(&lock_current);
                 }
-                pthread_mutex_unlock(&lock_node_list);
-            }else if (command == REQUEST) {
+            } else {
+                pthread_mutex_lock(&lock_current);
+                array_list_add(current, nn);
+                get_by_hash(current, hashed)->counter++;
+                pthread_mutex_unlock(&lock_current);
+            }
 
-                char * filename = malloc(MSG_LEN);
-                memset(filename, 0, MSG_LEN);
-                printf("Receiving filename\n");
-                recvfrom(comm_socket, filename, MSG_LEN, 0,
-                         (struct sockaddr *) &client_addr, &addr_len);
+            if (flag) {
+                size_t size = sizeof(struct sockaddr_in) + sizeof(socklen_t) + sizeof(int) + sizeof(size_t);
+                void *data = malloc(size);
+                memset(data, 0, size);
+                memcpy(data, &client_addr, sizeof(struct sockaddr_in));
+                memcpy(data, &addr_len, sizeof(struct sockaddr_in));
+                memcpy(data, &comm_socket, sizeof(int));
+                memcpy(data, &hashed, sizeof(size_t));
 
-                char filepath[MSG_LEN];
-                memset(filepath, 0, MSG_LEN);
-                strcpy(filepath, SHARED_FOLDER);
-                strcat(filepath, filename);
-                printf("filepath is %s\n", filepath);
-
-                int word_count = 0;
-                char ** parsed_file = parse_file(filepath, &word_count);
-                printf("file was %d long\n", word_count);
-                int word_count2 = htonl(word_count);
-                sendto(comm_socket, &word_count2, sizeof(int), 0,
-                         (struct sockaddr *) &client_addr, sizeof(struct sockaddr));
-
-                for (int i = 0; i < word_count; i ++) {
-                    printf("word %s\n", parsed_file[i]);
-                    sendto(comm_socket, parsed_file[i], MSG_LEN, 0,
-                           (struct sockaddr *) &client_addr, sizeof(struct sockaddr));
-                    usleep(50000);
-                }
+                pthread_t request;
+                pthread_create(&request, NULL, connection_handler, data);
             }
         }
     }
@@ -271,7 +333,7 @@ void * tcp_client(void * data) {
 
             sendto(main_socket, &zero, sizeof(int), 0,
                    (struct sockaddr *) get_sockadrr(dest), sizeof(struct sockaddr));
-            printf("done sync");
+            printf("done sync\n");
             break;
         }
         case REQUEST: {
@@ -394,6 +456,8 @@ int main(int argc, char **argv) {
     pthread_mutex_init(&client, NULL);
     pthread_mutex_init(&lock_file_list, NULL);
     pthread_mutex_init(&server, NULL);
+    pthread_mutex_init(&lock_current, NULL);
+    pthread_mutex_init(&lock_black_list, NULL);
     pthread_mutex_lock(&client);
     pthread_mutex_lock(&server);
     node_list = create_array_list();

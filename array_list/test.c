@@ -42,6 +42,11 @@ int main() {
     network_node * nn4 = (network_node *)malloc(sizeof(network_node));
     split_msg(nn4, str3);
 
+    struct sockaddr_in * sa = (struct sockaddr_in *)malloc(sizeof(struct sockaddr_in));
+    memset(sa, 0, sizeof(struct sockaddr_in));
+
+    sa = get_sockadrr(nn3);
+    printf("%zu \n%zu", hash_nn(nn3), hash_sockadrr(sa));
 
     p_array_list alist = create_array_list();
 
@@ -56,7 +61,7 @@ int main() {
 
     size_t iter = array_list_iter(alist, &is_shtf);
     while(is_shtf >= 0) {
-        printf("%zu \n", array_list_get(alist, iter, &is_shtf)->counter);
+        printf("%zu \n", (array_list_get(alist, iter, &is_shtf))->counter);
         iter = array_list_next(alist, iter, &is_shtf);
     }
     printf("kek\n");
