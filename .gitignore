@@ -1,3 +1,4 @@
 .idea/*
+TCP_DoSer/.idea/*
 cmake-build-debug/*
 shared_folder/*

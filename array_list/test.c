@@ -42,12 +42,6 @@ int main() {
     network_node * nn4 = (network_node *)malloc(sizeof(network_node));
     split_msg(nn4, str3);
 
-    char filepath[MSG_LEN];
-    memset(filepath, 0, MSG_LEN);
-    strcpy(filepath, "../shared_folder/temp.txt");
-    int kke = 0;
-    char ** parsed = parse_file(filepath, &kke);
-
 
     p_array_list alist = create_array_list();
 
@@ -62,7 +56,7 @@ int main() {
 
     size_t iter = array_list_iter(alist, &is_shtf);
     while(is_shtf >= 0) {
-        printf("%s \n", array_list_get(alist, iter, &is_shtf)->node);
+        printf("%zu \n", array_list_get(alist, iter, &is_shtf)->counter);
         iter = array_list_next(alist, iter, &is_shtf);
     }
     printf("kek\n");
