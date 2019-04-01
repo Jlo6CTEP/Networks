@@ -73,7 +73,7 @@ void *connection_handler(void * data) {
     memcpy(&addr_len, data + sizeof(struct sockaddr_in), sizeof(socklen_t));
 
     int comm_socket;
-    memcpy(&addr_len, data + sizeof(struct sockaddr_in) + sizeof(socklen_t), sizeof(int));
+    memcpy(&comm_socket, data + sizeof(struct sockaddr_in) + sizeof(socklen_t), sizeof(int));
 
     size_t hashed;
     memcpy(&hashed, data + sizeof(struct sockaddr_in) + sizeof(socklen_t) + sizeof(int), sizeof(size_t));
@@ -100,6 +100,7 @@ void *connection_handler(void * data) {
 
         pthread_mutex_lock(&lock_node_list);
         array_list_add(node_list, nn);
+        pthread_mutex_unlock(&lock_node_list);
         int length = 0;
         recvfrom(comm_socket, &length, sizeof(int), 0,
                  (struct sockaddr *) &client_addr, &addr_len);
@@ -111,7 +112,9 @@ void *connection_handler(void * data) {
             recvfrom(comm_socket, buffer2, MSG_LEN, 0,
                      (struct sockaddr *) &client_addr, &addr_len);
             split_msg(nn2, buffer2);
+            pthread_mutex_lock(&lock_node_list);
             array_list_add(node_list, nn2);
+            pthread_mutex_unlock(&lock_node_list);
             free(buffer2);
         }
         pthread_mutex_unlock(&lock_node_list);
@@ -189,13 +192,15 @@ void *tcp_server(void * nothing) {
             sprintf(nn->node, ":%s:%d:", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
             size_t hashed = hash_nn(nn);
 
-            if (contains_by_hash(black_list, hashed) == 0)
+            if (contains_by_hash(black_list, hashed) != 0) {
+                printf("Node %s be black-listed", nn->node);
                 flag = 0;
-            if (contains_by_hash(current, hashed)) {
+            } else if (contains_by_hash(current, hashed)) {
                 if (get_by_hash(current, hashed)->counter >= MAX_ATTEMPTS) {
                     pthread_mutex_lock(&lock_black_list);
                     array_list_add(black_list, nn);
                     pthread_mutex_unlock(&lock_black_list);
+                    printf("Node %s be black-listed", nn->node);
                     pthread_mutex_lock(&lock_current);
                     array_list_remove(current, nn);
                     pthread_mutex_unlock(&lock_current);
@@ -217,9 +222,9 @@ void *tcp_server(void * nothing) {
                 void *data = malloc(size);
                 memset(data, 0, size);
                 memcpy(data, &client_addr, sizeof(struct sockaddr_in));
-                memcpy(data, &addr_len, sizeof(struct sockaddr_in));
-                memcpy(data, &comm_socket, sizeof(int));
-                memcpy(data, &hashed, sizeof(size_t));
+                memcpy(data + sizeof(struct sockaddr_in), &addr_len, sizeof(socklen_t));
+                memcpy(data + sizeof(struct sockaddr_in) + sizeof(socklen_t), &comm_socket, sizeof(int));
+                memcpy(data + sizeof(struct sockaddr_in) + sizeof(socklen_t) + sizeof(int), &hashed, sizeof(size_t));
 
                 pthread_t request;
                 pthread_create(&request, NULL, connection_handler, data);
@@ -264,7 +269,7 @@ void * tcp_client(void * data) {
         struct ifreq ifr;
         fd = socket(AF_INET, SOCK_DGRAM, 0);
         ifr.ifr_addr.sa_family = AF_INET;
-        memcpy(ifr.ifr_name, "eth0", IFNAMSIZ-1);
+        memcpy(ifr.ifr_name, "eth2", IFNAMSIZ-1);
         ioctl(fd, SIOCGIFADDR, &ifr);
         close(fd);
         strcpy((char *) ip_address, inet_ntoa(((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr));
