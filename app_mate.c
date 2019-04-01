@@ -99,8 +99,9 @@ void *tcp_server(void * nothing) {
             printf("Connection accepted from client : %s:%u\n",
                    inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
 
-            int command = -1;
+            unsigned int command = 100500;
             recvfrom(comm_socket, &command, sizeof(int), 0, (struct sockaddr *) &client_addr, &addr_len);
+            command = htonl(command);
             printf("command %d\n", command);
             if (command == SYN) {
 
@@ -150,8 +151,8 @@ void *tcp_server(void * nothing) {
                 int word_count = 0;
                 char ** parsed_file = parse_file(filepath, &word_count);
                 printf("file was %d long\n", word_count);
-
-                sendto(comm_socket, &word_count, sizeof(int), 0,
+                int word_count2 = htonl(word_count);
+                sendto(comm_socket, &word_count2, sizeof(int), 0,
                          (struct sockaddr *) &client_addr, sizeof(struct sockaddr));
 
                 for (int i = 0; i < word_count; i ++) {
@@ -201,7 +202,7 @@ void * tcp_client(void * data) {
         struct ifreq ifr;
         fd = socket(AF_INET, SOCK_DGRAM, 0);
         ifr.ifr_addr.sa_family = AF_INET;
-        memcpy(ifr.ifr_name, "eth0", IFNAMSIZ-1);
+        memcpy(ifr.ifr_name, "wifi0", IFNAMSIZ-1);
         ioctl(fd, SIOCGIFADDR, &ifr);
         close(fd);
         strcpy((char *) ip_address, inet_ntoa(((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr));
@@ -258,13 +259,17 @@ void * tcp_client(void * data) {
 
     switch (command_counter) {
         case SYN: {
+            int command = htonl(SYN);
+            int zero = htonl(0);
             int main_socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
             connect(main_socket, (struct sockaddr *) get_sockadrr(dest), sizeof(struct sockaddr));
-            sendto(main_socket, (const void *) SYN, sizeof(int), 0,
+            sendto(main_socket, &command , sizeof(int), 0,
                    (struct sockaddr *) &dest, sizeof(struct sockaddr));
-            sendto(main_socket, self, MSG_LEN, 0,
+
+            sendto(main_socket, concat_msg(self), MSG_LEN, 0,
                    (struct sockaddr *) &dest, sizeof(struct sockaddr));
-            sendto(main_socket, 0, sizeof(int), 0,
+
+            sendto(main_socket, &zero, sizeof(int), 0,
                    (struct sockaddr *) &dest, sizeof(struct sockaddr));
             printf("done sync");
             break;
@@ -276,26 +281,30 @@ void * tcp_client(void * data) {
 
             connect(main_socket, (struct sockaddr *) get_sockadrr(dest), sizeof(struct sockaddr));
 
-            int command = REQUEST;
+            int command = htonl(REQUEST);
             sendto(main_socket, &command, sizeof(int), 0,
                    (struct sockaddr *) &dest, sizeof(struct sockaddr));
 
             sendto(main_socket, file_name, MSG_LEN, 0,
                    (struct sockaddr *) &dest, sizeof(struct sockaddr));
 
-            size_t len = 0;
+            int32_t len = 0;
             socklen_t addr_len = sizeof(struct sockaddr);
-            recvfrom(main_socket, &len, sizeof(int), 0,
+            recvfrom(main_socket, &len, sizeof(int32_t), 0,
                      (struct sockaddr *) &dest, &addr_len);
+
+            len = htonl(len);
 
             char file_content[MSG_LEN];
             memset(file_content, 0, MSG_LEN);
             for (int i = 0; i < len; i++) {
                 char word[MSG_LEN];
+                memset(word, 0, MSG_LEN);
                 recvfrom(main_socket, word, MSG_LEN, 0,
                          (struct sockaddr *) &dest, &addr_len);
                 strcat(file_content, word);
                 strcat(file_content, " ");
+                printf("word %s\n", word);
             }
 
 
@@ -310,13 +319,10 @@ void * tcp_client(void * data) {
 
             printf("done file transfer\n");
 
-            sendto(main_socket, (char *) DISCONNECT, CMD_LEN, 0,
-                   (struct sockaddr *) &dest, sizeof(struct sockaddr));
             close(main_socket);
 
             break;
-        }
-        case CREATE_NEW:
+        }        case CREATE_NEW:
             return NULL;
 
         default:
@@ -337,7 +343,7 @@ void * syncher(void * nothing) {
             int sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
             struct sockaddr_in *dest = get_sockadrr(array_list_get(node_list, iter, &is_shtf));
             connect(sock, (struct sockaddr *) dest, sizeof(struct sockaddr));
-            int command = 1;
+            int command = htonl(1);
             sendto(sock, &command, sizeof(int), 0, (struct sockaddr *) &dest, sizeof(struct sockaddr));
             sendto(sock, concat_msg(self), MSG_LEN, 0, (struct sockaddr *) &dest, sizeof(struct sockaddr));
             sendto(sock, &node_list->count, sizeof(int), 0, (struct sockaddr *) &dest, sizeof(struct sockaddr));
