@@ -232,7 +232,12 @@ size_t hash_string(char * str) {
 size_t hash_nn(network_node *nn) {
     int i = 0;
     for (i = 0; nn->node[i] != ':'; i++);
-    return hash_string(nn->node + i);
+    int j = i + 1;
+    for (j; nn->node[j] != ':'; j++);
+    char buffer[NODE_LENGTH];
+    memset(buffer, 0, NODE_LENGTH);
+    memcpy(buffer, nn->node + i, j - 1 + 1);
+    return hash_string(buffer);
 }
 
 int contains_by_hash(p_array_list list, size_t hashed) {
