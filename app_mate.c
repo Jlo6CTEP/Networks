@@ -193,7 +193,6 @@ void *tcp_server(void * nothing) {
             size_t hashed = hash_nn(nn);
 
             if (contains_by_hash(black_list, hashed) != 0) {
-                printf("Node %s be black-listed", nn->node);
                 flag = 0;
             } else if (contains_by_hash(current, hashed)) {
                 if (get_by_hash(current, hashed)->counter >= MAX_ATTEMPTS) {
@@ -269,7 +268,7 @@ void * tcp_client(void * data) {
         struct ifreq ifr;
         fd = socket(AF_INET, SOCK_DGRAM, 0);
         ifr.ifr_addr.sa_family = AF_INET;
-        memcpy(ifr.ifr_name, "eth2", IFNAMSIZ-1);
+        memcpy(ifr.ifr_name, "eth0", IFNAMSIZ-1);
         ioctl(fd, SIOCGIFADDR, &ifr);
         close(fd);
         strcpy((char *) ip_address, inet_ntoa(((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr));
