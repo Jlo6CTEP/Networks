@@ -32,7 +32,6 @@
 #include <fcntl.h>
 
 #define DEFAULT_PORT "8080"
-#define CMD_LEN 4
 
 #define NAME "-n"
 #define ADDRESS "-a"
@@ -46,7 +45,7 @@
 #define CREATE_NEW 2
 #define SYN 1
 #define REQUEST 0
-#define MAX_ATTEMPTS 5
+#define MAX_ATTEMPTS 10
 
 #define SHARED_FOLDER "../shared_folder/"
 
@@ -148,6 +147,8 @@ void *connection_handler(void * data) {
         }
     }
 
+    close(comm_socket);
+    usleep(10000);
     pthread_mutex_lock(&lock_current);
     get_by_hash(current, hashed)->counter--;
     pthread_mutex_unlock(&lock_current);
@@ -194,15 +195,17 @@ void *tcp_server(void * nothing) {
 
             if (contains_by_hash(black_list, hashed) != 0) {
                 flag = 0;
+                close(comm_socket);
             } else if (contains_by_hash(current, hashed)) {
                 if (get_by_hash(current, hashed)->counter >= MAX_ATTEMPTS) {
                     pthread_mutex_lock(&lock_black_list);
                     array_list_add(black_list, nn);
                     pthread_mutex_unlock(&lock_black_list);
-                    printf("Node %s be black-listed", nn->node);
+                    printf("Node %s be black-listed\n", nn->node);
                     pthread_mutex_lock(&lock_current);
                     array_list_remove(current, nn);
                     pthread_mutex_unlock(&lock_current);
+                    close(comm_socket);
                     flag = 0;
                 } else {
                     pthread_mutex_lock(&lock_current);
@@ -269,6 +272,7 @@ void * tcp_client(void * data) {
         fd = socket(AF_INET, SOCK_DGRAM, 0);
         ifr.ifr_addr.sa_family = AF_INET;
         memcpy(ifr.ifr_name, "eth0", IFNAMSIZ-1);
+
         ioctl(fd, SIOCGIFADDR, &ifr);
         close(fd);
         strcpy((char *) ip_address, inet_ntoa(((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr));
