@@ -12,16 +12,15 @@ def ping_ponger(address, port, number):
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         s.connect((address, port))
-        s.send(int(0).to_bytes(4, byteorder='big'))
-        s.send(bytes("They are the panzer elite, born to complete, never retreat - Ghost Division!", 'ASCII'))
+        s.send(int(1).to_bytes(4, byteorder='big'))
         s.close()
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Ping-pong given node to death")
-    parser.add_argument("-a", type=str, help="target node address")
-    parser.add_argument("-p", type=int, help="target node port")
-    parser.add_argument("-n", type=int, help="number of threads")
+    parser.add_argument("address", type=str, help="target node address")
+    parser.add_argument("port", type=int, help="target node port")
+    parser.add_argument("thread_count", type=int, help="number of threads")
     parser = parser.parse_args()
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
