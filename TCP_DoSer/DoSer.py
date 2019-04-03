@@ -29,3 +29,4 @@ if __name__ == "__main__":
         thread_list.append(Process(target=ping_ponger, args=(parser.address, parser.port, x)))
         thread_list[x].start()
     sleep(1)
+ 

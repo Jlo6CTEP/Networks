@@ -103,6 +103,7 @@ void *connection_handler(void * data) {
         recvfrom(comm_socket, &length, sizeof(int), 0,
                  (struct sockaddr *) &client_addr, &addr_len);
         length = ntohl((uint32_t) length);
+        printf("%d\n", length);
         for (int i = 0; i < length; i++) {
             network_node *nn2 = (network_node *) malloc(sizeof(network_node));
             memset(nn2, 0, sizeof(network_node));
@@ -147,6 +148,7 @@ void *connection_handler(void * data) {
                    (struct sockaddr *) &client_addr, sizeof(struct sockaddr));
             usleep(50000);
         }
+        printf("Done file transfer\n");
     }
 
     close(comm_socket);
@@ -363,7 +365,13 @@ void * tcp_client(void * data) {
             recvfrom(main_socket, &len, sizeof(int32_t), 0,
                      (struct sockaddr *) get_sockadrr(dest), &addr_len);
 
-            len = htonl(len);
+            len = ntohl(len);
+            printf("word count is %d\n", len);
+            char filepath[FILENAME_LENGTH * 2];
+            strcpy(filepath, SHARED_FOLDER);
+            strcat(filepath, file_name);
+            FILE *fp;
+            fp = fopen(filepath, "w");
 
             char file_content[MSG_LEN];
             memset(file_content, 0, MSG_LEN);
@@ -372,20 +380,11 @@ void * tcp_client(void * data) {
                 memset(word, 0, MSG_LEN);
                 recvfrom(main_socket, word, MSG_LEN, 0,
                          (struct sockaddr *) get_sockadrr(dest), &addr_len);
-                strcat(file_content, word);
-                strcat(file_content, " ");
                 printf("word %s\n", word);
+                fprintf(fp,"%s ", word);
             }
 
-
-            char filepath[FILENAME_LENGTH * 2];
-            strcpy(filepath, SHARED_FOLDER);
-            strcat(filepath, file_name);
-
-
-            int fp = open(filepath, O_WRONLY | O_CREAT, S_IROTH | S_IWOTH);
-            write(fp, file_content, MSG_LEN);
-            close(fp);
+            fclose(fp);
 
             printf("done file transfer\n");
 
