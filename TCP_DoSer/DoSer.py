@@ -25,7 +25,7 @@ if __name__ == "__main__":
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
     thread_list = []
-    for x in range(parser.n):
-        thread_list.append(Process(target=ping_ponger, args=(parser.a, parser.p, x)))
+    for x in range(parser.thread_count):
+        thread_list.append(Process(target=ping_ponger, args=(parser.address, parser.port, x)))
         thread_list[x].start()
     sleep(1)
