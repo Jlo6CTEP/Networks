@@ -45,7 +45,7 @@
 #define CREATE_NEW 2
 #define SYN 1
 #define REQUEST 0
-#define MAX_ATTEMPTS 10
+#define MAX_ATTEMPTS 5
 
 #define SHARED_FOLDER "../shared_folder/"
 
@@ -271,7 +271,7 @@ void * tcp_client(void * data) {
         struct ifreq ifr;
         fd = socket(AF_INET, SOCK_DGRAM, 0);
         ifr.ifr_addr.sa_family = AF_INET;
-        memcpy(ifr.ifr_name, "eth0", IFNAMSIZ-1);
+        memcpy(ifr.ifr_name, "wifi0", IFNAMSIZ-1);
 
         ioctl(fd, SIOCGIFADDR, &ifr);
         close(fd);
