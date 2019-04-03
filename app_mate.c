@@ -45,7 +45,7 @@
 #define CREATE_NEW 2
 #define SYN 1
 #define REQUEST 0
-#define MAX_ATTEMPTS 5
+#define MAX_ATTEMPTS 3
 
 #define SHARED_FOLDER "../shared_folder/"
 
@@ -88,7 +88,6 @@ void *connection_handler(void * data) {
 
         char * buffer = malloc(MSG_LEN);
         memset(buffer, 0, MSG_LEN);
-
         recvfrom(comm_socket, buffer, MSG_LEN, 0,
                  (struct sockaddr *) &client_addr, &addr_len);
 
@@ -103,6 +102,7 @@ void *connection_handler(void * data) {
         int length = 0;
         recvfrom(comm_socket, &length, sizeof(int), 0,
                  (struct sockaddr *) &client_addr, &addr_len);
+        length = ntohl((uint32_t) length);
         for (int i = 0; i < length; i++) {
             network_node *nn2 = (network_node *) malloc(sizeof(network_node));
             memset(nn2, 0, sizeof(network_node));
@@ -111,9 +111,11 @@ void *connection_handler(void * data) {
             recvfrom(comm_socket, buffer2, MSG_LEN, 0,
                      (struct sockaddr *) &client_addr, &addr_len);
             split_msg(nn2, buffer2);
-            pthread_mutex_lock(&lock_node_list);
-            array_list_add(node_list, nn2);
-            pthread_mutex_unlock(&lock_node_list);
+            if (memcmp(nn2, self, NODE_LENGTH) != 0) {
+                pthread_mutex_lock(&lock_node_list);
+                array_list_add(node_list, nn2);
+                pthread_mutex_unlock(&lock_node_list);
+            }
             free(buffer2);
         }
         pthread_mutex_unlock(&lock_node_list);
@@ -195,7 +197,6 @@ void *tcp_server(void * nothing) {
 
             if (contains_by_hash(black_list, hashed) != 0) {
                 flag = 0;
-                close(comm_socket);
             } else if (contains_by_hash(current, hashed)) {
                 if (get_by_hash(current, hashed)->counter >= MAX_ATTEMPTS) {
                     pthread_mutex_lock(&lock_black_list);
@@ -205,7 +206,6 @@ void *tcp_server(void * nothing) {
                     pthread_mutex_lock(&lock_current);
                     array_list_remove(current, nn);
                     pthread_mutex_unlock(&lock_current);
-                    close(comm_socket);
                     flag = 0;
                 } else {
                     pthread_mutex_lock(&lock_current);
@@ -416,7 +416,8 @@ void * syncher(void * nothing) {
             int command = htonl(1);
             sendto(sock, &command, sizeof(int), 0, (struct sockaddr *) &dest, sizeof(struct sockaddr));
             sendto(sock, concat_msg(self), MSG_LEN, 0, (struct sockaddr *) &dest, sizeof(struct sockaddr));
-            sendto(sock, &node_list->count, sizeof(int), 0, (struct sockaddr *) &dest, sizeof(struct sockaddr));
+            int length = htonl((uint32_t) node_list->count);
+            sendto(sock, &length, sizeof(int), 0, (struct sockaddr *) &dest, sizeof(struct sockaddr));
             if (node_list->count != 0) {
                 int is_shtf2 = 0;
                 size_t iter2 = array_list_iter(node_list, &is_shtf);
