@@ -82,7 +82,7 @@ void *connection_handler(void * data) {
 
     unsigned int command = 100500;
     recvfrom(comm_socket, &command, sizeof(int), 0, (struct sockaddr *) &client_addr, &addr_len);
-    command = htonl(command);
+    command = ntohl(command);
     printf("command %d\n", command);
     if (command == SYN) {
 
