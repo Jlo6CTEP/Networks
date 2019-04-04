@@ -65,6 +65,7 @@ p_array_list current;
 network_node * self;
 
 void *connection_handler(void * data) {
+    // unpack all needed data
     struct sockaddr_in client_addr;
     memcpy(&client_addr, data, sizeof(struct sockaddr_in));
 
@@ -81,11 +82,12 @@ void *connection_handler(void * data) {
            inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
 
     unsigned int command = 100500;
+    // now it is time to receive command
     recvfrom(comm_socket, &command, sizeof(int), 0, (struct sockaddr *) &client_addr, &addr_len);
     command = ntohl(command);
     printf("command %d\n", command);
     if (command == SYN) {
-
+        //first receive info about requesting node
         char * buffer = malloc(MSG_LEN);
         memset(buffer, 0, MSG_LEN);
         recvfrom(comm_socket, buffer, MSG_LEN, 0,
@@ -96,14 +98,17 @@ void *connection_handler(void * data) {
         split_msg(nn, buffer);
         free(buffer);
 
+        //and add it into my node list
         pthread_mutex_lock(&lock_node_list);
         array_list_add(node_list, nn);
         pthread_mutex_unlock(&lock_node_list);
         int length = 0;
+        //receive number of known nodes IN NETWORK FORMAT
         recvfrom(comm_socket, &length, sizeof(int), 0,
                  (struct sockaddr *) &client_addr, &addr_len);
         length = ntohl((uint32_t) length);
         printf("%d\n", length);
+        //receive nodes one by one
         for (int i = 0; i < length; i++) {
             network_node *nn2 = (network_node *) malloc(sizeof(network_node));
             memset(nn2, 0, sizeof(network_node));
@@ -112,6 +117,8 @@ void *connection_handler(void * data) {
             recvfrom(comm_socket, buffer2, MSG_LEN, 0,
                      (struct sockaddr *) &client_addr, &addr_len);
             split_msg(nn2, buffer2);
+            // sometimes other nodes send you info about yourself
+            // if so, do nothing
             if (memcmp(nn2, self, NODE_LENGTH) != 0) {
                 pthread_mutex_lock(&lock_node_list);
                 array_list_add(node_list, nn2);
@@ -122,33 +129,42 @@ void *connection_handler(void * data) {
         pthread_mutex_unlock(&lock_node_list);
 
     } else if (command == REQUEST) {
-
+        // in case of request, we first receive filename
         char * filename = malloc(MSG_LEN);
         memset(filename, 0, MSG_LEN);
         printf("Receiving filename\n");
         recvfrom(comm_socket, filename, MSG_LEN, 0,
                  (struct sockaddr *) &client_addr, &addr_len);
 
+        // construct filepath to get this file
         char filepath[MSG_LEN];
         memset(filepath, 0, MSG_LEN);
         strcpy(filepath, SHARED_FOLDER);
         strcat(filepath, filename);
         printf("filepath is %s\n", filepath);
 
+        // this stores number of words
         int word_count = 0;
+        // now file can be parsed into buffer word by word by utility function
         char ** parsed_file = parse_file(filepath, &word_count);
         printf("file was %d long\n", word_count);
-        int word_count2 = htonl(word_count);
-        sendto(comm_socket, &word_count2, sizeof(int), 0,
+        word_count = htonl((uint32_t) word_count);
+        // send number of words
+        sendto(comm_socket, &word_count, sizeof(int), 0,
                (struct sockaddr *) &client_addr, sizeof(struct sockaddr));
 
+        //and then send file content word by word
         for (int i = 0; i < word_count; i ++) {
             printf("word %s\n", parsed_file[i]);
             sendto(comm_socket, parsed_file[i], MSG_LEN, 0,
                    (struct sockaddr *) &client_addr, sizeof(struct sockaddr));
             usleep(50000);
         }
+        // prevent memory leaks
         printf("Done file transfer\n");
+        for (int i = 0; i < word_count; i++)
+            free(parsed_file[i]);
+        free(parsed_file);
     }
 
     close(comm_socket);
@@ -163,10 +179,13 @@ void *connection_handler(void * data) {
 
 //done
 void *tcp_server(void * nothing) {
+    // this makes the server wait unblocking by client
+    // again, race condition is evil
     pthread_mutex_lock(&server);
     pthread_mutex_unlock(&server);
-    int main_socket = 0;
 
+    // this will setup server (like in previous examples on labs)
+    int main_socket = 0;
     int comm_socket = 0;
     fd_set read_descriptors;
     struct sockaddr_in my_address,client_addr;
@@ -186,21 +205,28 @@ void *tcp_server(void * nothing) {
         FD_ZERO(&read_descriptors);
         FD_SET(main_socket, &read_descriptors);
         select(main_socket + 1, &read_descriptors, NULL, NULL, NULL);
-
+        // if there is connection
         if (FD_ISSET(main_socket, &read_descriptors)) {
-
+            // we accept it, and check if it is spammer
             comm_socket = accept(main_socket, (struct sockaddr *) &client_addr, &addr_len);
 
+            // this flag determine if we process this connection or not
             int flag = 1;
-
+            //construct temporary network node for accepted connection
             network_node * nn = (network_node *)malloc(sizeof(network_node));
             sprintf(nn->node, ":%s:%d:", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
+            // calculate its hash
             size_t hashed = hash_nn(nn);
 
+            //if node in blacklist - do nothing
             if (contains_by_hash(black_list, hashed) != 0) {
                 flag = 0;
+                // if it is in current list, which means that there are requests from this
+                // node being processed right now
             } else if (contains_by_hash(current, hashed)) {
+                // first check, if this node reached maximum number of concurrent connections
                 if (get_by_hash(current, hashed)->counter >= MAX_ATTEMPTS) {
+                    // if so, black-list this node and print message
                     pthread_mutex_lock(&lock_black_list);
                     array_list_add(black_list, nn);
                     pthread_mutex_unlock(&lock_black_list);
@@ -210,18 +236,23 @@ void *tcp_server(void * nothing) {
                     pthread_mutex_unlock(&lock_current);
                     flag = 0;
                 } else {
+                    // if not, just increase connections counter
                     pthread_mutex_lock(&lock_current);
                     get_by_hash(current, hashed)->counter++;
                     pthread_mutex_unlock(&lock_current);
                 }
             } else {
+                // if node is not in current list
+                // add it and increase counter
                 pthread_mutex_lock(&lock_current);
                 array_list_add(current, nn);
                 get_by_hash(current, hashed)->counter++;
                 pthread_mutex_unlock(&lock_current);
             }
 
+            // now if node is not blacklisted, we can process connection from it
             if (flag) {
+                // pack all needed data for handler thread
                 size_t size = sizeof(struct sockaddr_in) + sizeof(socklen_t) + sizeof(int) + sizeof(size_t);
                 void *data = malloc(size);
                 memset(data, 0, size);
@@ -230,6 +261,7 @@ void *tcp_server(void * nothing) {
                 memcpy(data + sizeof(struct sockaddr_in) + sizeof(socklen_t), &comm_socket, sizeof(int));
                 memcpy(data + sizeof(struct sockaddr_in) + sizeof(socklen_t) + sizeof(int), &hashed, sizeof(size_t));
 
+                //invoke new thread to process this connection
                 pthread_t request;
                 pthread_create(&request, NULL, connection_handler, data);
             }
@@ -266,21 +298,22 @@ void * tcp_client(void * data) {
     network_node * dest = (network_node *)malloc(sizeof(network_node));
     memset(dest, 0, sizeof(network_node));
 
-    // indexes of different parts of command line arguments
+    // indexes of different command line arguments
     size_t index0 = 0;
     size_t index1 = 0;
     size_t index2 = 0;
 
     //this will be filled with node info
     char node[NODE_LENGTH];
-    // this with file info
+    // this with filename from CMD line arguments
     char file_name[MSG_LEN];
 
 
     int command_counter;
-    //
+    // try to find name key and its argument in argv
     if (cl_parse(NAME, argv, argc, &index0) != -1 && index0 + 1 <= argc) {
 
+        //this will obtain your IP on the corresponding communication media (eth0, eth1 etc)
         char ip_address[15];
         int fd;
         struct ifreq ifr;
@@ -290,6 +323,7 @@ void * tcp_client(void * data) {
 
         ioctl(fd, SIOCGIFADDR, &ifr);
         close(fd);
+        //this will construct info about your node and put it into self network_node
         strcpy((char *) ip_address, inet_ntoa(((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr));
         memset(node, 0, NODE_LENGTH);
         strcat(node, NODE_NAME);
@@ -301,14 +335,14 @@ void * tcp_client(void * data) {
 
         strcpy(self->node, node);
 
-        //handle make command
+        //try to find MAKE command, which is used to create first ndoe
         if (cl_parse(CREATE_NEW_CMD, argv, argc, &index1) != -1) {
             command_counter = CREATE_NEW;
         //handle connect command
         } else {
-            char address[20];
-            char port[20];
-            char *ptr;
+            //otherwise we have to parse address and port of target node
+            // they are needed for both request and syn commands
+            // if there is such parameters, they will be parsed and put into destination node
             if (cl_parse(ADDRESS, argv, argc, &index1) != -1 && index1 + 1 <= argc){
                 if (cl_parse(PORT, argv, argc, &index2) != -1 && index2 + 1 <= argc){
                     memset(node, 0, NODE_LENGTH);
@@ -320,66 +354,89 @@ void * tcp_client(void * data) {
                     strcat(node, ":\0");
 
                     strcpy(dest->node, node);
+                    // if there is no such parameters, program will show error message and quit
                 }else SHTF("port");
             } else SHTF("address");
 
+            //if there is SYN parameter, set command_counter to appropriate command
             if (cl_parse(SYN_CMD, argv, argc, &index1) != -1 && index1 + 1 <= argc)
                 command_counter = SYN;
             else
+                // last option is request command
+                //here must be appropriate key for command itself
                 if (cl_parse(REQUEST_CMD, argv, argc, &index1) != -1 && index1 + 1 <= argc) {
+                    // and key for file, followed by filename
                     if (cl_parse(FILENAME, argv, argc, &index1) != -1 && index1 + 1 <= argc) {
                         memset(file_name, 0, MSG_LEN);
                         strcpy(file_name, argv[index1 + 1]);
                         command_counter = REQUEST;
-                    }
-                }
+                    } else SHTF("filename")
+                } else SHTF("file")
         }
     } else SHTF("name");
-
+    //now time to unlock server
     pthread_mutex_unlock(&server);
 
     free(argv);
 
 
-
+    // in previous stage we only set command_counter, filename and dest address
+    // according to arguments from CMD
     switch (command_counter) {
+        //in case of syn command, do all appropriate stuff from lab
         case SYN: {
+            // warning, network format!
             int command = htonl(SYN);
-            int zero = htonl(0);
             int main_socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
             connect(main_socket, (struct sockaddr *) get_sockadrr(dest), sizeof(struct sockaddr));
+            // first we send command to remote server
             sendto(main_socket, &command , sizeof(int), 0,
                    (struct sockaddr *) get_sockadrr(dest), sizeof(struct sockaddr));
-
+            // then send info about this host
             sendto(main_socket, concat_msg(self), MSG_LEN, 0,
                    (struct sockaddr *) get_sockadrr(dest), sizeof(struct sockaddr));
-
-            sendto(main_socket, &zero, sizeof(int), 0,
+            // Then send number of known nodes
+            int known_nodes_count = htonl((uint32_t) node_list->count);
+            sendto(main_socket, &known_nodes_count, sizeof(int), 0,
                    (struct sockaddr *) get_sockadrr(dest), sizeof(struct sockaddr));
+
+            // and send them one by one
+            int is_shtf2 = 0;
+            size_t iter2 = array_list_iter(node_list, &is_shtf2);
+            while (is_shtf2 >= 0) {
+                char * buffer = malloc(MSG_LEN);
+                memset(buffer, 0, MSG_LEN);
+                strcpy(buffer, array_list_get(node_list, iter2, &is_shtf2)->node);
+                sendto(main_socket, buffer, MSG_LEN, 0, (struct sockaddr *) &dest, sizeof(struct sockaddr));
+                iter2 = array_list_next(node_list, iter2, &is_shtf2);
+            }
+
             printf("done sync\n");
             break;
         }
         case REQUEST: {
+            // if we want to perform request command
             printf("execute order file transfer\n");
 
             int main_socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 
             connect(main_socket, (struct sockaddr *) get_sockadrr(dest), sizeof(struct sockaddr));
-
+            // first send command in network format
             int command = htonl(REQUEST);
             sendto(main_socket, &command, sizeof(int), 0,
                    (struct sockaddr *) get_sockadrr(dest), sizeof(struct sockaddr));
-
+            // then send filename
             sendto(main_socket, file_name, MSG_LEN, 0,
                    (struct sockaddr *) get_sockadrr(dest), sizeof(struct sockaddr));
-
+            // and then receive word count of file
             int32_t len = 0;
             socklen_t addr_len = sizeof(struct sockaddr);
             recvfrom(main_socket, &len, sizeof(int32_t), 0,
                      (struct sockaddr *) get_sockadrr(dest), &addr_len);
 
-            len = ntohl(len);
+            len = ntohl((uint32_t) len);
             printf("word count is %d\n", len);
+            // construct filepath
             char filepath[FILENAME_LENGTH * 2];
             strcpy(filepath, SHARED_FOLDER);
             strcat(filepath, file_name);
@@ -388,6 +445,7 @@ void * tcp_client(void * data) {
 
             char file_content[MSG_LEN];
             memset(file_content, 0, MSG_LEN);
+            //receive file word by word and write it into file
             for (int i = 0; i < len; i++) {
                 char word[MSG_LEN];
                 memset(word, 0, MSG_LEN);
@@ -396,41 +454,47 @@ void * tcp_client(void * data) {
                 printf("word %s\n", word);
                 fprintf(fp,"%s ", word);
             }
-
+            // transfer is done
             fclose(fp);
-
             printf("done file transfer\n");
-
             close(main_socket);
 
             break;
-        }        case CREATE_NEW:
+        }
+        // in case of creating new file we should do nothing
+        case CREATE_NEW:
             return NULL;
-
-        default:
-            return NULL;
-
+        default:break;
     }
     return NULL;
 }
 
 void * syncher(void * nothing) {
+    // lock node_list for all the time of operations
+    // to prevent race conditions
     pthread_mutex_lock(&lock_node_list);
     while (1) {
+        // if there is no nodes in my node, do nothing
         int is_shtf = 0;
         size_t iter = array_list_iter(node_list, &is_shtf);
 
         while (is_shtf >= 0) {
-            socklen_t addr_len = sizeof(struct sockaddr);
+            // construct all appropriate data
             int sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
             struct sockaddr_in *dest = get_sockadrr(array_list_get(node_list, iter, &is_shtf));
             connect(sock, (struct sockaddr *) dest, sizeof(struct sockaddr));
             int command = htonl(1);
+            // send command to the host
             sendto(sock, &command, sizeof(int), 0, (struct sockaddr *) &dest, sizeof(struct sockaddr));
+            // send info about this machine
             sendto(sock, concat_msg(self), MSG_LEN, 0, (struct sockaddr *) &dest, sizeof(struct sockaddr));
             int length = htonl((uint32_t) node_list->count);
+            // send number of known nodes
             sendto(sock, &length, sizeof(int), 0, (struct sockaddr *) &dest, sizeof(struct sockaddr));
+            // send nodes one by one, if there are any nodes
             if (node_list->count != 0) {
+                // this is error counter for node_list, it will be set to -1
+                // if there are no nodes/next node doesn't exist
                 int is_shtf2 = 0;
                 size_t iter2 = array_list_iter(node_list, &is_shtf);
                 while (is_shtf2 >= 0) {
@@ -471,7 +535,7 @@ void * file_daemon(void *nothing) {
         }
         // unlocks file list
         pthread_mutex_unlock(&lock_file_list);
-        // during first pass client will be unblocked
+        // after the first pass client will be unblocked
         pthread_mutex_unlock(&client);
         sleep(10);
     }
