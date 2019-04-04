@@ -248,25 +248,38 @@ int cl_parse(char *parameter, void **line, int line_size, size_t *index) {
 }
 
 void * tcp_client(void * data) {
+    // this hold client locked until unlocked by file daemon
     pthread_mutex_lock(&client);
     pthread_mutex_unlock(&client);
-    int cmd_len = 0;
 
-    memcpy(&cmd_len, data, sizeof(int));
-    void ** buffer = malloc(sizeof(void *) * cmd_len);
-    memcpy(buffer, data + sizeof(int), sizeof(void *) * cmd_len);
+    // unpack argv and argc (CMD line arguments) from main function
+    int argc = 0;
+
+    //this gonna be argc
+    memcpy(&argc, data, sizeof(int));
+    //and this argv
+    void ** argv = malloc(sizeof(void *) * argc);
+    memcpy(argv, data + sizeof(int), sizeof(void *) * argc);
     free(data);
+
+    // target node created and initialised
     network_node * dest = (network_node *)malloc(sizeof(network_node));
     memset(dest, 0, sizeof(network_node));
 
+    // indexes of different parts of command line arguments
     size_t index0 = 0;
     size_t index1 = 0;
     size_t index2 = 0;
+
+    //this will be filled with node info
     char node[NODE_LENGTH];
+    // this with file info
     char file_name[MSG_LEN];
 
+
     int command_counter;
-    if (cl_parse(NAME, buffer, cmd_len, &index0) != -1 && index0 + 1 <= cmd_len) {
+    //
+    if (cl_parse(NAME, argv, argc, &index0) != -1 && index0 + 1 <= argc) {
 
         char ip_address[15];
         int fd;
@@ -289,34 +302,34 @@ void * tcp_client(void * data) {
         strcpy(self->node, node);
 
         //handle make command
-        if (cl_parse(CREATE_NEW_CMD, buffer, cmd_len, &index1) != -1) {
+        if (cl_parse(CREATE_NEW_CMD, argv, argc, &index1) != -1) {
             command_counter = CREATE_NEW;
         //handle connect command
         } else {
             char address[20];
             char port[20];
             char *ptr;
-            if (cl_parse(ADDRESS, buffer, cmd_len, &index1) != -1 && index1 + 1 <= cmd_len){
-                if (cl_parse(PORT, buffer, cmd_len, &index2) != -1 && index2 + 1 <= cmd_len){
+            if (cl_parse(ADDRESS, argv, argc, &index1) != -1 && index1 + 1 <= argc){
+                if (cl_parse(PORT, argv, argc, &index2) != -1 && index2 + 1 <= argc){
                     memset(node, 0, NODE_LENGTH);
-                    strcat(node, buffer[index0 + 1]);
+                    strcat(node, argv[index0 + 1]);
                     strcat(node, ":\0");
-                    strcat(node, buffer[index1 + 1]);
+                    strcat(node, argv[index1 + 1]);
                     strcat(node, ":\0");
-                    strcat(node, buffer[index2 + 1]);
+                    strcat(node, argv[index2 + 1]);
                     strcat(node, ":\0");
 
                     strcpy(dest->node, node);
                 }else SHTF("port");
             } else SHTF("address");
 
-            if (cl_parse(SYN_CMD, buffer, cmd_len, &index1) != -1 && index1 + 1 <= cmd_len)
+            if (cl_parse(SYN_CMD, argv, argc, &index1) != -1 && index1 + 1 <= argc)
                 command_counter = SYN;
             else
-                if (cl_parse(REQUEST_CMD, buffer, cmd_len, &index1) != -1 && index1 + 1 <= cmd_len) {
-                    if (cl_parse(FILENAME, buffer, cmd_len, &index1) != -1 && index1 + 1 <= cmd_len) {
+                if (cl_parse(REQUEST_CMD, argv, argc, &index1) != -1 && index1 + 1 <= argc) {
+                    if (cl_parse(FILENAME, argv, argc, &index1) != -1 && index1 + 1 <= argc) {
                         memset(file_name, 0, MSG_LEN);
-                        strcpy(file_name, buffer[index1 + 1]);
+                        strcpy(file_name, argv[index1 + 1]);
                         command_counter = REQUEST;
                     }
                 }
@@ -325,7 +338,7 @@ void * tcp_client(void * data) {
 
     pthread_mutex_unlock(&server);
 
-    free(buffer);
+    free(argv);
 
 
 
@@ -437,14 +450,18 @@ void * syncher(void * nothing) {
 
 
 void * file_daemon(void *nothing) {
-
+    // put files in ../shared_folder/ into self->files
     while (1) {
+        // scans directory
         DIR *d;
         struct dirent *dir;
         d = opendir(SHARED_FOLDER);
+        // locks file list
         pthread_mutex_lock(&lock_file_list);
         if (d) {
+            // add file by file into self->file
             while ((dir = readdir(d)) != NULL) {
+                // ignore .. and . files
                 if (strcmp(dir->d_name, ".") != 0 && strcmp(dir->d_name, "..") != 0) {
                     array_list_add_file(self, dir->d_name);
                     //printf("%s added\n", dir->d_name);
@@ -452,7 +469,9 @@ void * file_daemon(void *nothing) {
             }
             closedir(d);
         }
+        // unlocks file list
         pthread_mutex_unlock(&lock_file_list);
+        // during first pass client will be unblocked
         pthread_mutex_unlock(&client);
         sleep(10);
     }
@@ -460,25 +479,41 @@ void * file_daemon(void *nothing) {
 
 
 int main(int argc, char **argv) {
+
+    // mutex for main node list
     pthread_mutex_init(&lock_node_list, NULL);
+    // mutex for thread in the process of startup
     pthread_mutex_init(&client, NULL);
+    // mutex for list of network_node self
     pthread_mutex_init(&lock_file_list, NULL);
+    // mutex for thread in the process of startup
     pthread_mutex_init(&server, NULL);
+
+    // mutex for for current requests and blacklist
     pthread_mutex_init(&lock_current, NULL);
     pthread_mutex_init(&lock_black_list, NULL);
+
+    // server and client are initially locked (only file_daemon works)
     pthread_mutex_lock(&client);
     pthread_mutex_lock(&server);
+
+    // create lists for databases
     node_list = create_array_list();
     black_list = create_array_list();
     current = create_array_list();
+
+    // create self node (which represents this machine)
     self = (network_node *)malloc(sizeof(network_node));
     memset(self, 0, sizeof(network_node));
 
+    //prepare argc and argv for pushing to client node
     void * data = malloc(sizeof(int) + sizeof(void *) * argc);
     memcpy(data, &argc, sizeof(int));
     memcpy(data + sizeof(int), argv, sizeof(void *) * argc);
 
-
+    // invoke threads for all functionality
+    // file daemon starts first, then unblocks client
+    // and client then unblocks server
     pthread_t sync, tcp_serv, tcp_cli, daemon;
     pthread_create(&tcp_cli, NULL, tcp_client, data);
     pthread_create(&tcp_serv, NULL, tcp_server, NULL);
